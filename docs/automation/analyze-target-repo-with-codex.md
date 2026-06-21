@@ -35,16 +35,22 @@ Codex 分析影响
 在 `git--codex` 仓库 Settings -> Secrets and variables -> Actions 配置：
 
 ```text
+TARGET_REPO_TOKEN
+SILICONFLOW_API_KEY
+```
+
+`TARGET_REPO_TOKEN` 用于在 GitHub Actions runner 中 checkout 私有目标仓库，
+至少需要读取目标仓库内容的权限。
+
+`SILICONFLOW_API_KEY` 用于默认的硅基流动 OpenAI-compatible 分析模式。
+
+如果后续要切回官方 Codex Action，再额外配置：
+
+```text
 OPENAI_API_KEY
 ```
 
-如果 `TAI-YE-2/hotel--ota-ai` 是私有仓库，还需要：
-
-```text
-TARGET_REPO_TOKEN
-```
-
-`TARGET_REPO_TOKEN` 至少需要读取目标仓库内容的权限。
+并在扣子请求体里把 `ai_provider` 改为 `openai_codex`。
 
 ## 扣子 HTTP 节点
 
@@ -80,7 +86,9 @@ Body 示例：
     "head_ref": "main",
     "compare_mode": "recent_commit",
     "requirement": "分析同事最近一次提交对价格、库存、收益策略的影响",
-    "focus_paths": "requirements,runtime,tests,docs,contracts"
+    "focus_paths": "requirements,runtime,tests,docs,contracts,config,skills",
+    "ai_provider": "siliconflow",
+    "siliconflow_model": "Qwen/Qwen2.5-Coder-32B-Instruct"
   }
 }
 ```
@@ -109,6 +117,23 @@ outputs/target_diff.patch
 ```
 
 这些文件提交在 `git--codex` 仓库，不会提交真实项目代码。
+
+## 模型模式
+
+当前 workflow 支持两种模式：
+
+```text
+siliconflow
+```
+
+默认模式。GitHub Actions 会调用硅基流动 OpenAI-compatible API 生成报告，
+适合没有 OpenAI API 额度时完成考核演示。
+
+```text
+openai_codex
+```
+
+官方 Codex Action 模式。需要 `OPENAI_API_KEY` 有可用 API 额度。
 
 ## 扣子大模型节点建议
 

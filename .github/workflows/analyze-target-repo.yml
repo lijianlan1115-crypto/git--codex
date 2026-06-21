@@ -36,6 +36,19 @@ on:
         required: false
         default: "requirements,runtime,tests,docs,contracts"
         type: string
+      ai_provider:
+        description: "模型提供方：siliconflow=硅基流动；openai_codex=官方 Codex Action"
+        required: false
+        default: "siliconflow"
+        type: choice
+        options:
+          - siliconflow
+          - openai_codex
+      siliconflow_model:
+        description: "硅基流动模型名称"
+        required: false
+        default: "Qwen/Qwen2.5-Coder-32B-Instruct"
+        type: string
 
 permissions:
   contents: write
@@ -119,7 +132,144 @@ jobs:
           echo "==== target_diff.patch ===="
           sed -n '1,260p' outputs/target_diff.patch
 
+      - name: Run SiliconFlow impact analysis
+        if: ${{ inputs.ai_provider == 'siliconflow' }}
+        env:
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          SILICONFLOW_MODEL: ${{ inputs.siliconflow_model }}
+          REQUIREMENT: ${{ inputs.requirement }}
+          FOCUS_PATHS: ${{ inputs.focus_paths }}
+        run: |
+          if [ -z "$SILICONFLOW_API_KEY" ]; then
+            echo "SILICONFLOW_API_KEY is not configured."
+            exit 1
+          fi
+
+          python -m pip install --upgrade openai
+
+          python << 'PY'
+          import os
+          from pathlib import Path
+          from openai import OpenAI
+
+          ROOT = Path(".")
+          TARGET = ROOT / "target_repo" / "hotel--ota-ai"
+          OUTPUTS = ROOT / "outputs"
+          OUTPUTS.mkdir(exist_ok=True)
+
+          def read_text(path: Path, limit: int = 20000) -> str:
+              if not path.exists():
+                  return f"[missing] {path}"
+              text = path.read_text(encoding="utf-8", errors="ignore")
+              if len(text) > limit:
+                  return text[:limit] + f"\n\n[truncated: {len(text) - limit} chars omitted]"
+              return text
+
+          def collect_focus_files() -> str:
+              focus_paths = [p.strip() for p in os.environ.get("FOCUS_PATHS", "").split(",") if p.strip()]
+              if not focus_paths:
+                  focus_paths = ["requirements", "runtime", "tests", "docs", "contracts", "config", "skills"]
+
+              allowed_suffixes = {
+                  ".py", ".md", ".json", ".yaml", ".yml", ".toml", ".txt", ".sh",
+                  ".ini", ".cfg", ".csv", ".sql"
+              }
+              parts = []
+              total_chars = 0
+              max_total_chars = 70000
+
+              for rel in focus_paths:
+                  base = TARGET / rel
+                  if not base.exists():
+                      parts.append(f"\n## {rel}\n未发现该路径。")
+                      continue
+
+                  files = [base] if base.is_file() else sorted(p for p in base.rglob("*") if p.is_file())
+                  selected = [p for p in files if p.suffix.lower() in allowed_suffixes][:35]
+                  parts.append(f"\n## {rel}\n收集文件数: {len(selected)}")
+
+                  for path in selected:
+                      rel_path = path.relative_to(TARGET)
+                      content = read_text(path, limit=6000)
+                      block = f"\n### {rel_path}\n```text\n{content}\n```"
+                      if total_chars + len(block) > max_total_chars:
+                          parts.append("\n[focus context truncated]")
+                          return "\n".join(parts)
+                      parts.append(block)
+                      total_chars += len(block)
+
+              return "\n".join(parts)
+
+          context = read_text(OUTPUTS / "target_change_context.md", limit=30000)
+          diff = read_text(OUTPUTS / "target_diff.patch", limit=90000)
+          focus_context = collect_focus_files()
+          requirement = os.environ.get("REQUIREMENT", "")
+
+          prompt = f"""
+          你是“基于 Codex 的研发协同变更分析与测试预警工作流”的分析助手。
+
+          当前运行在 GitHub Actions runner 中。真实项目代码已经 checkout 到本地目录：
+          target_repo/hotel--ota-ai
+
+          你不需要修改代码，只需要基于 diff、上下文和重点文件生成研发协同影响分析报告。
+
+          # 用户关注需求
+          {requirement}
+
+          # Change Context
+          {context}
+
+          # Git Diff
+          {diff}
+
+          # Focus Files
+          {focus_context}
+
+          请输出 Markdown 报告，必须包含：
+          1. 变更摘要：同事或目标分支改了什么
+          2. 修改文件清单
+          3. 影响模块：代码模块、业务模块、Agent、Skill、配置、输入输出
+          4. 协同风险：是否影响其他开发、测试环境、正式环境、其他工作区
+          5. 风险等级：low / medium / high，并说明原因
+          6. 是否需要我同步修改
+          7. 回归验证方案：测试什么、怎么测
+          8. 通过标准
+          9. 失败标准
+          10. 测试清单
+          11. 需要人工确认的点
+
+          报告风格用于考核答辩，要清晰、可展示、能体现“GitHub Actions 本地化分析架构”。
+          """
+
+          client = OpenAI(
+              api_key=os.environ["SILICONFLOW_API_KEY"],
+              base_url="https://api.siliconflow.cn/v1",
+          )
+
+          response = client.chat.completions.create(
+              model=os.environ.get("SILICONFLOW_MODEL") or "Qwen/Qwen2.5-Coder-32B-Instruct",
+              messages=[
+                  {
+                      "role": "system",
+                      "content": "你是资深研发协同影响分析专家，擅长从代码 diff、项目结构和需求文档中生成测试预警报告。",
+                  },
+                  {"role": "user", "content": prompt},
+              ],
+              temperature=0.2,
+          )
+
+          report = response.choices[0].message.content or ""
+          header = """# 研发协同变更分析与测试预警报告
+
+          > 生成方式：GitHub Actions checkout 目标仓库后，使用硅基流动 OpenAI-compatible API 在 runner 本地读取 diff/context 生成。
+
+          """
+          (OUTPUTS / "change_summary.md").write_text(header + report.strip() + "\n", encoding="utf-8")
+          print("Generated outputs/change_summary.md")
+          PY
+
       - name: Run Codex impact analysis
+        if: ${{ inputs.ai_provider == 'openai_codex' }}
         uses: openai/codex-action@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
