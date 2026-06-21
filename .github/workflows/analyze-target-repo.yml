@@ -8,16 +8,19 @@ on:
         required: true
         default: "TAI-YE-2/hotel--ota-ai"
         type: string
+
       base_ref:
         description: "对比基准分支"
         required: false
         default: "main"
         type: string
+
       head_ref:
         description: "目标分支"
         required: false
         default: "main"
         type: string
+
       requirement:
         description: "需求描述"
         required: false
@@ -35,7 +38,7 @@ jobs:
     steps:
 
       # =========================
-      # 1️⃣ 拉取当前仓库（报告仓库）
+      # 1️⃣ 拉取当前仓库
       # =========================
       - name: Checkout report repo
         uses: actions/checkout@v4
@@ -53,7 +56,7 @@ jobs:
           token: ${{ secrets.TARGET_REPO_TOKEN }}
 
       # =========================
-      # 3️⃣ 生成 diff（稳定版）
+      # 3️⃣ Build diff（已修复稳定版）
       # =========================
       - name: Build diff context
         run: |
@@ -67,12 +70,36 @@ jobs:
           echo "Head: ${{ inputs.head_ref }}" >> ../outputs/context.md
           echo "Requirement: ${{ inputs.requirement }}" >> ../outputs/context.md
 
-          git fetch origin
+          git fetch origin || true
 
-          git diff origin/${{ inputs.base_ref }}..origin/${{ inputs.head_ref }} > ../outputs/diff.patch || true
+          BASE=${{ inputs.base_ref }}
+          HEAD=${{ inputs.head_ref }}
+
+          echo "Generating diff: $BASE .. $HEAD"
+
+          # =========================
+          # 🟢 修复点：避免空 diff / 同分支 crash
+          # =========================
+          if git rev-parse origin/$BASE >/dev/null 2>&1 && git rev-parse origin/$HEAD >/dev/null 2>&1; then
+            git diff origin/$BASE..origin/$HEAD > ../outputs/diff.patch || true
+          else
+            echo "No valid diff base/head, fallback to HEAD log" > ../outputs/diff.patch
+            git log -n 20 --oneline >> ../outputs/diff.patch || true
+          fi
 
       # =========================
-      # 4️⃣ AI 分析（稳定 Python 版本）
+      # 4️⃣ Debug（强烈建议保留）
+      # =========================
+      - name: Debug outputs
+        run: |
+          ls -R outputs || true
+          echo "==== context ===="
+          cat outputs/context.md || true
+          echo "==== diff ===="
+          cat outputs/diff.patch || true
+
+      # =========================
+      # 5️⃣ AI 分析（稳定版）
       # =========================
       - name: Run AI impact analysis
         env:
@@ -80,10 +107,64 @@ jobs:
         run: |
           pip install --upgrade openai
 
-          python scripts/analyze.py
+          python << 'EOF'
+import os
+import json
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+with open("outputs/diff.patch", "r", encoding="utf-8") as f:
+    diff = f.read()
+
+prompt = f"""
+你是资深研发架构分析专家。
+
+请分析 Git diff，并严格输出 JSON（禁止任何解释）：
+
+{diff}
+
+输出格式：
+{{
+  "summary": "本次变更总结",
+  "risk_level": "low|medium|high",
+  "affected_modules": [],
+  "test_cases": [],
+  "impact": "影响说明"
+}}
+"""
+
+resp = client.chat.completions.create(
+    model="gpt-4.1",
+    messages=[
+        {"role": "system", "content": "只输出JSON，不允许解释，不允许markdown"},
+        {"role": "user", "content": prompt}
+    ],
+    temperature=0.2
+)
+
+text = resp.choices[0].message.content.strip()
+
+text = text.replace("```json", "").replace("```", "")
+
+try:
+    result = json.loads(text)
+except Exception:
+    result = {
+        "summary": "解析失败",
+        "raw_output": text
+    }
+
+os.makedirs("outputs", exist_ok=True)
+
+with open("outputs/ai_result.json", "w", encoding="utf-8") as f:
+    json.dump(result, f, ensure_ascii=False, indent=2)
+
+print(json.dumps(result, ensure_ascii=False, indent=2))
+EOF
 
       # =========================
-      # 5️⃣ 生成最终报告
+      # 6️⃣ 生成报告
       # =========================
       - name: Build final report
         run: |
@@ -98,7 +179,7 @@ jobs:
           cat outputs/ai_result.json >> outputs/report.md
 
       # =========================
-      # 6️⃣ 提交结果
+      # 7️⃣ 提交结果
       # =========================
       - name: Commit report
         run: |
