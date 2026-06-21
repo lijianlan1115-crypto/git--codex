@@ -1,0 +1,166 @@
+name: Analyze target repository impact
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: "要分析的真实项目仓库"
+        required: true
+        default: "TAI-YE-2/hotel--ota-ai"
+        type: string
+      base_ref:
+        description: "对比基准分支或提交"
+        required: false
+        default: "main"
+        type: string
+      head_ref:
+        description: "要分析的分支或提交"
+        required: false
+        default: "main"
+        type: string
+      compare_mode:
+        description: "recent_commit=分析最近一次提交；range=分析 base...head"
+        required: false
+        default: "recent_commit"
+        type: choice
+        options:
+          - recent_commit
+          - range
+      requirement:
+        description: "可选：我准备修改的需求或要关注的问题"
+        required: false
+        default: ""
+        type: string
+      focus_paths:
+        description: "可选：重点关注路径，逗号分隔"
+        required: false
+        default: "requirements,runtime,tests,docs,contracts"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout report repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: true
+
+      - name: Checkout target repository read-only
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ inputs.target_repo }}
+          ref: ${{ inputs.head_ref }}
+          path: target_repo/hotel--ota-ai
+          fetch-depth: 0
+          token: ${{ secrets.TARGET_REPO_TOKEN || github.token }}
+
+      - name: Build target diff context
+        run: |
+          mkdir -p outputs
+          cd target_repo/hotel--ota-ai
+
+          {
+            echo "# Target Repository Change Context"
+            echo
+            echo "Generated at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo
+            echo "Target repo: ${{ inputs.target_repo }}"
+            echo "Base ref: ${{ inputs.base_ref }}"
+            echo "Head ref: ${{ inputs.head_ref }}"
+            echo "Compare mode: ${{ inputs.compare_mode }}"
+            echo "Requirement: ${{ inputs.requirement }}"
+            echo "Focus paths: ${{ inputs.focus_paths }}"
+            echo
+            echo "## Current HEAD"
+            git log -1 --pretty=fuller
+            echo
+            echo "## Recent commits"
+            git log -8 --oneline
+            echo
+            echo "## Repository status"
+            git status --short
+          } > ../../outputs/target_change_context.md
+
+          if [ "${{ inputs.compare_mode }}" = "range" ]; then
+            git fetch origin "${{ inputs.base_ref }}" --depth=100 || true
+            {
+              echo "## Changed files"
+              git diff --name-only "origin/${{ inputs.base_ref }}...HEAD" || true
+              echo
+              echo "## Diff"
+              git diff --stat "origin/${{ inputs.base_ref }}...HEAD" || true
+              git diff --patch "origin/${{ inputs.base_ref }}...HEAD" || true
+            } > ../../outputs/target_diff.patch
+          else
+            {
+              echo "## Changed files"
+              git show --name-only --format= HEAD
+              echo
+              echo "## Diff"
+              git show --format=fuller --stat --patch HEAD
+            } > ../../outputs/target_diff.patch
+          fi
+
+      - name: Run Codex impact analysis
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          sandbox: workspace-write
+          output-file: outputs/change_summary.md
+          prompt: |
+            你是“研发协同变更分析与测试预警”助手。
+
+            当前仓库 `git--codex` 是测试工作区和报告仓库。
+            真实项目代码已只读 checkout 到：
+
+            `target_repo/hotel--ota-ai`
+
+            请不要修改 `target_repo/hotel--ota-ai` 中的任何文件。
+            你只需要读取真实项目代码、需求文档、契约、测试和 diff，然后输出影响分析报告。
+
+            请先阅读：
+            - `outputs/target_change_context.md`
+            - `outputs/target_diff.patch`
+            - `docs/automation/analyze-target-repo-with-codex.md`
+
+            然后结合目标仓库中的以下目录分析：
+            - `target_repo/hotel--ota-ai/requirements/`
+            - `target_repo/hotel--ota-ai/docs/`
+            - `target_repo/hotel--ota-ai/contracts/`
+            - `target_repo/hotel--ota-ai/runtime/`
+            - `target_repo/hotel--ota-ai/tests/`
+            - `target_repo/hotel--ota-ai/skills/`
+            - `target_repo/hotel--ota-ai/agents/`
+
+            输出 Markdown 报告，必须包含：
+            1. 同事或目标分支改了什么
+            2. 影响哪些文件、模块、字段、Agent、输入输出、测试环境
+            3. 是否影响我的模块或工作区
+            4. 是否需要同步修改
+            5. 风险等级：low / medium / high
+            6. 回归验证方案
+            7. 通过标准
+            8. 失败标准
+            9. 需要人工确认的点
+
+      - name: Ensure target repository is not committed
+        run: |
+          rm -rf target_repo
+
+      - name: Commit generated report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add outputs/target_change_context.md outputs/target_diff.patch outputs/change_summary.md
+          if git diff --cached --quiet; then
+            echo "No report changes to commit."
+          else
+            git commit -m "Add target repository impact analysis report"
+            git push
+          fi
