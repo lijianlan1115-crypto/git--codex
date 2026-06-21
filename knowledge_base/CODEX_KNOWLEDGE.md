@@ -1,0 +1,211 @@
+# Codex 本地知识库索引
+
+资料来源：/Users/jelly/Desktop/work/酒店数字员工
+文档数量：675
+知识片段：1513
+
+## 使用方式
+
+Codex 修改或分析代码前，先读取本文件，再按关键词从 `knowledge_base/chunks/` 读取相关片段。
+
+## 资料清单
+
+- [测试验收] 2026.6.5测试数据/JL02 酒店经营业绩日报表(固化).xlsx | 关键词：RevPAR, 渠道 | chunks：2
+- [测试验收] 2026.6.5测试数据/JY03 酒店综合统计月报表(固化).xlsx | 关键词：RevPAR, 渠道 | chunks：2
+- [测试验收] 2026.6.5测试数据/JY10 酒店经营业绩报表(固化).xlsx | 关键词：RevPAR, 订单 | chunks：3
+- [测试验收] 2026.6.5测试数据/KF12 实时房态汇总报表.xlsx | 关键词：房态 | chunks：1
+- [测试验收] 2026.6.5测试数据/RS01 房费日报表(固化).xlsx | 关键词：订单 | chunks：2
+- [需求文档] Agent整体-费用分析.xlsx | 关键词：OTA, Agent, 测试, PMS | chunks：1
+- [字段契约] PMS（别样红）.docx | 关键词：价格, 库存, 收益, RevPAR, OTA, 渠道, 房态, 订单, 字段, PMS | chunks：1
+- [字段契约] S14_OTA诊断客户上传测试数据_多渠道.xlsx | 关键词：价格, 库存, RevPAR, ADR, OCC, OTA, 渠道, 字段, 测试, 飞书, PMS, 诊断 | chunks：3
+- [字段契约] S14_OTA诊断客户上传测试数据_字段标准化_多渠道.xlsx | 关键词：库存, RevPAR, ADR, OCC, OTA, 渠道, 字段, 测试, 飞书, PMS, 诊断 | chunks：3
+- [项目资料] Xhotel门店评估报告：璞悦·奢电竞酒店.pdf | 关键词：价格, 收益, RevPAR, OTA, 渠道, 订单, 诊断 | chunks：1
+- [项目资料] github-hotel-target/.openclaw/workspace-state.json | 关键词：无 | chunks：1
+- [测试验收] github-hotel-target/AGENTS.md | 关键词：价格, 收益, OTA, 渠道, 房态, Agent, 测试, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] github-hotel-target/BOOTSTRAP.md | 关键词：价格, 收益, ADR, OTA, 渠道, 订单, 字段, Agent, 测试, 验收, 飞书, OpenClaw, 诊断 | chunks：1
+- [Agent技能] github-hotel-target/HEARTBEAT.md | 关键词：Agent, OpenClaw | chunks：1
+- [测试验收] github-hotel-target/IDENTITY.md | 关键词：OTA, Agent, 测试, 飞书, 诊断 | chunks：1
+- [字段契约] github-hotel-target/MEMORY.md | 关键词：OTA, 订单, 字段, Agent, 测试, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] github-hotel-target/README.md | 关键词：收益, OTA, 渠道, 房态, 订单, 字段, Agent, 测试, 验收, 飞书, OpenClaw, 诊断 | chunks：1
+- [项目资料] github-hotel-target/SOUL.md | 关键词：无 | chunks：1
+- [需求文档] github-hotel-target/TOOLS.md | 关键词：收益, OTA, 渠道, 订单, 飞书, PMS, OpenClaw, 诊断 | chunks：2
+- [项目资料] github-hotel-target/USER.md | 关键词：渠道, 诊断 | chunks：1
+- [项目资料] github-hotel-target/config/database-source.example.json | 关键词：OTA | chunks：2
+- [项目资料] github-hotel-target/config/feishu-role-map.example.json | 关键词：OTA | chunks：1
+- [需求文档] github-hotel-target/config/openclaw.example.json | 关键词：OTA, Agent, OpenClaw | chunks：1
+- [字段契约] github-hotel-target/examples/feishu-prompts.md | 关键词：价格, 库存, OTA, 订单, 字段, Agent, 测试, 飞书, PMS, 诊断 | chunks：1
+- [项目资料] github-hotel-target/memory/2026-06-08-data-baseline.md | 关键词：ADR, 渠道, PMS | chunks：2
+- [项目资料] github-hotel-target/memory/test-session.md | 关键词：无 | chunks：1
+- [需求文档] github-hotel-target/requirements/OpenClaw实施教程.md | 关键词：OTA, 渠道, Agent, 测试, 飞书, OpenClaw | chunks：7
+- [需求文档] github-hotel-target/requirements/OpenClaw常用配置命令.md | 关键词：OTA, 字段, 测试, 飞书, OpenClaw | chunks：2
+- [需求文档] github-hotel-target/requirements/OpenClaw总控Agent提示词.md | 关键词：收益, RevPAR, ADR, OTA, 渠道, 房态, 订单, 字段, Agent, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] github-hotel-target/requirements/OpenClaw自动适配提示词.md | 关键词：OTA, 渠道, 房态, 订单, 字段, Agent, 验收, 飞书, PMS, OpenClaw, 诊断 | chunks：2
+- [需求文档] github-hotel-target/requirements/OpenClaw项目适配说明.md | 关键词：OTA, 渠道, Agent, 测试, 验收, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] github-hotel-target/requirements/P0P1交付清单.md | 关键词：价格, 库存, 收益, RevPAR, ADR, OTA, 渠道, 房态, 订单, 字段, Agent, 测试, 验收, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] github-hotel-target/requirements/P0P1技能测试矩阵.md | 关键词：RevPAR, ADR, OTA, 订单, 测试, 飞书, 诊断 | chunks：1
+- [需求文档] github-hotel-target/requirements/runtime模块化说明.md | 关键词：价格, 收益, OTA, 订单, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] github-hotel-target/requirements/skill_specs.yaml | 关键词：OTA, 字段, Agent, PMS, OpenClaw | chunks：2
+- [需求文档] github-hotel-target/requirements/价格进度转化字段规则.md | 关键词：价格, OTA, 订单, 字段, 飞书, PMS, 诊断 | chunks：1
+- [需求文档] github-hotel-target/requirements/功能蓝图映射.md | 关键词：价格, 收益, OTA, 渠道, 房态, 订单, 字段, PMS, OpenClaw, 诊断 | chunks：1
+- [需求文档] github-hotel-target/requirements/功能蓝图落地矩阵.md | 关键词：价格, 收益, RevPAR, OTA, 渠道, 订单, 字段, 验收, 飞书, PMS, OpenClaw, 诊断 | chunks：1
+- [需求文档] github-hotel-target/requirements/商用准入清单.md | 关键词：ADR, OTA, 渠道, 订单, 字段, Agent, 测试, 飞书 | chunks：1
+- [需求文档] github-hotel-target/requirements/多源依据治理.md | 关键词：OTA, 订单, 字段, Agent, 飞书, OpenClaw | chunks：1
+- [需求文档] github-hotel-target/requirements/数字员工长期记忆与归档规范.md | 关键词：价格, ADR, OTA, 订单, 字段, Agent, 测试, 验收, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] github-hotel-target/requirements/数据字段字典与来源优先级.md | 关键词：价格, 库存, 收益, RevPAR, ADR, OCC, OTA, 渠道, 房态, 订单, 字段, 验收, 飞书, PMS, 诊断 | chunks：1
+- [需求文档] github-hotel-target/requirements/渠道API适配策略.md | 关键词：价格, 库存, OTA, 渠道, 房态, 订单, 字段, 验收, 飞书, PMS, 诊断 | chunks：1
+- [需求文档] github-hotel-target/requirements/生产阶段注意事项.md | 关键词：OTA, 订单, 字段, Agent, 测试, 飞书, OpenClaw, 诊断 | chunks：2
+- [需求文档] github-hotel-target/requirements/统一数据契约.md | 关键词：库存, OTA, 渠道, 房态, 订单, 字段, 飞书, PMS, 诊断 | chunks：2
+- [需求文档] github-hotel-target/requirements/脚本固化边界.md | 关键词：价格, 收益, OTA, 订单, 字段, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] github-hotel-target/requirements/资料索引与引用规范.md | 关键词：收益, OTA, 订单, 字段, Agent, 验收, 飞书, OpenClaw | chunks：1
+- [需求文档] github-hotel-target/requirements/需求文档.md | 关键词：收益, OTA, 渠道, 房态, 订单, 字段, 验收, 飞书, PMS, OpenClaw, 诊断 | chunks：1
+- [需求文档] github-hotel-target/requirements/飞书输出规范.md | 关键词：价格, 库存, 收益, RevPAR, ADR, OTA, 渠道, 订单, 字段, 飞书, PMS, OpenClaw, 诊断 | chunks：1
+- [需求文档] github-hotel-target/requirements/验收用例.md | 关键词：ADR, OTA, 订单, Agent, 验收, 飞书, PMS, OpenClaw | chunks：4
+- [项目资料] github-hotel-target/runtime/__init__.py | 关键词：OTA, OpenClaw | chunks：1
+- [项目资料] github-hotel-target/runtime/adapters/__init__.py | 关键词：PMS | chunks：1
+- [项目资料] github-hotel-target/runtime/adapters/beyondh.py | 关键词：OTA, PMS | chunks：1
+- [项目资料] github-hotel-target/runtime/adapters/database.py | 关键词：OTA, PMS | chunks：11
+- [项目资料] github-hotel-target/runtime/adapters/dindanll.py | 关键词：OTA, 订单, PMS | chunks：1
+- [项目资料] github-hotel-target/runtime/adapters/meituan.py | 关键词：OTA | chunks：1
+- [项目资料] github-hotel-target/runtime/cli.py | 关键词：OCC, OTA | chunks：5
+- [项目资料] github-hotel-target/runtime/common.py | 关键词：OTA | chunks：1
+- [项目资料] github-hotel-target/runtime/contracts.py | 关键词：OTA | chunks：1
+- [项目资料] github-hotel-target/runtime/decisions/__init__.py | 关键词：无 | chunks：1
+- [项目资料] github-hotel-target/runtime/decisions/baseline.py | 关键词：OCC, OTA | chunks：2
+- [项目资料] github-hotel-target/runtime/decisions/calendar.py | 关键词：OTA | chunks：4
+- [项目资料] github-hotel-target/runtime/decisions/command_menu.py | 关键词：OTA | chunks：5
+- [项目资料] github-hotel-target/runtime/decisions/competition.py | 关键词：收益, OTA | chunks：1
+- [项目资料] github-hotel-target/runtime/decisions/customer.py | 关键词：ADR, OTA, 订单 | chunks：1
+- [项目资料] github-hotel-target/runtime/decisions/demand.py | 关键词：RevPAR, ADR, OCC, OTA | chunks：2
+- [项目资料] github-hotel-target/runtime/decisions/deviation.py | 关键词：OTA | chunks：3
+- [项目资料] github-hotel-target/runtime/decisions/ota_health.py | 关键词：OTA, 诊断 | chunks：1
+- [项目资料] github-hotel-target/runtime/decisions/pricing.py | 关键词：OTA, PMS | chunks：6
+- [字段契约] github-hotel-target/runtime/decisions/promotion.py | 关键词：价格, OTA, 字段 | chunks：1
+- [项目资料] github-hotel-target/runtime/decisions/reputation.py | 关键词：OTA | chunks：1
+- [项目资料] github-hotel-target/runtime/decisions/tasks.py | 关键词：价格, 库存, OTA, 订单 | chunks：1
+- [项目资料] github-hotel-target/runtime/hotel_ota_runtime.py | 关键词：OTA, OpenClaw | chunks：1
+- [项目资料] github-hotel-target/runtime/safety/__init__.py | 关键词：无 | chunks：1
+- [项目资料] github-hotel-target/runtime/safety/approvals.py | 关键词：OTA | chunks：1
+- [项目资料] github-hotel-target/runtime/safety/auth.py | 关键词：OTA | chunks：2
+- [字段契约] github-hotel-target/runtime/safety/feishu_output.py | 关键词：ADR, OTA, 订单, 飞书, OpenClaw, 诊断 | chunks：2
+- [项目资料] github-hotel-target/runtime/safety/guards.py | 关键词：OTA | chunks：1
+- [项目资料] github-hotel-target/runtime/storage.py | 关键词：OTA, PMS | chunks：2
+- [项目资料] github-hotel-target/scripts/generate_report.py | 关键词：OTA, 诊断 | chunks：1
+- [项目资料] github-hotel-target/scripts/s14_diagnosis.py | 关键词：OTA, OpenClaw, 诊断 | chunks：1
+- [项目资料] github-hotel-target/scripts/s14_feishu_entry.py | 关键词：OTA, 诊断 | chunks：1
+- [项目资料] github-hotel-target/scripts/s14_mysql_report.py | 关键词：OTA, 诊断 | chunks：1
+- [字段契约] github-hotel-target/skills/s14-operation-diagnosis/DEPLOYMENT.md | 关键词：OTA, Agent, OpenClaw | chunks：1
+- [字段契约] github-hotel-target/skills/s14-operation-diagnosis/SKILL.md | 关键词：RevPAR, ADR, OTA, 渠道, 房态, 订单, 字段, Agent, 测试, 飞书, PMS, OpenClaw, 诊断 | chunks：4
+- [字段契约] github-hotel-target/skills/s14-operation-diagnosis/TESTING.md | 关键词：OpenClaw | chunks：1
+- [字段契约] github-hotel-target/skills/s14-operation-diagnosis/config/database_schema.sql | 关键词：RevPAR, ADR, OCC, OTA, OpenClaw | chunks：1
+- [需求文档] github-hotel-target/skills/s14-operation-diagnosis/config/excel_field_mapping.yaml | 关键词：RevPAR, ADR, OCC, OTA, 渠道, PMS, 诊断 | chunks：2
+- [字段契约] github-hotel-target/skills/s14-operation-diagnosis/config/fields.yaml | 关键词：OTA, 渠道, OpenClaw | chunks：2
+- [项目资料] github-hotel-target/skills/s14-operation-diagnosis/config/hotel_pricing_sources.yaml | 关键词：RevPAR, ADR, OCC, OTA, 渠道, 订单, 字段, OpenClaw | chunks：2
+- [Agent技能] github-hotel-target/skills/s14-operation-diagnosis/config/triggers.yaml | 关键词：OTA, 渠道, Agent, OpenClaw, 诊断 | chunks：1
+- [数据样例] github-hotel-target/skills/s14-operation-diagnosis/inputs/s14_manual_form_mock.csv | 关键词：库存, OTA, 渠道, PMS, 诊断 | chunks：1
+- [字段契约] github-hotel-target/skills/s14-operation-diagnosis/openclaw.skill.yaml | 关键词：OTA, Agent, OpenClaw | chunks：1
+- [字段契约] github-hotel-target/skills/s14-operation-diagnosis/references/examples.md | 关键词：RevPAR, OTA, 字段, 飞书, 诊断 | chunks：1
+- [字段契约] github-hotel-target/skills/s14-operation-diagnosis/references/excel_field_mapping.csv | 关键词：RevPAR, ADR, OCC, OTA, 渠道, 订单, 字段, PMS, 诊断 | chunks：2
+- [数据样例] github-hotel-target/skills/s14-operation-diagnosis/references/excel_field_mapping.xlsx | 关键词：无 | chunks：1
+- [Agent技能] github-hotel-target/skills/s14-operation-diagnosis/references/feishu_routing.md | 关键词：Agent, OpenClaw, 诊断 | chunks：1
+- [字段契约] github-hotel-target/skills/s14-operation-diagnosis/references/input_schema.json | 关键词：渠道, 字段, OpenClaw, 诊断 | chunks：1
+- [字段契约] github-hotel-target/skills/s14-operation-diagnosis/references/output_schema.json | 关键词：OpenClaw, 诊断 | chunks：1
+- [字段契约] github-hotel-target/skills/s14-operation-diagnosis/references/rules.md | 关键词：RevPAR, ADR, OCC, OTA, 字段, OpenClaw, 诊断 | chunks：1
+- [测试验收] github-hotel-target/skills/s14-operation-diagnosis/references/runtime_commands.md | 关键词：OTA, 渠道, 字段, 测试, 飞书, PMS, OpenClaw, 诊断 | chunks：1
+- [项目资料] github-hotel-target/skills/s14-operation-diagnosis/runtime/__init__.py | 关键词：OTA, OpenClaw | chunks：4
+- [项目资料] github-hotel-target/skills/s14-operation-diagnosis/runtime/calculator.py | 关键词：价格, 库存, 收益, RevPAR, ADR, OTA, 房态, 订单 | chunks：4
+- [项目资料] github-hotel-target/skills/s14-operation-diagnosis/runtime/data_fetcher.py | 关键词：RevPAR, ADR, OCC, OTA, OpenClaw | chunks：4
+- [项目资料] github-hotel-target/skills/s14-operation-diagnosis/runtime/excel_reader.py | 关键词：OTA, 渠道, 订单 | chunks：2
+- [项目资料] github-hotel-target/skills/s14-operation-diagnosis/runtime/feishu_adapter.py | 关键词：OTA, OpenClaw | chunks：1
+- [字段契约] github-hotel-target/skills/s14-operation-diagnosis/runtime/models.py | 关键词：OTA, OpenClaw | chunks：1
+- [测试验收] github-hotel-target/skills/s14-operation-diagnosis/runtime/reply_formatter.py | 关键词：OTA, Agent, 测试, 诊断 | chunks：2
+- [项目资料] github-hotel-target/skills/s14-operation-diagnosis/runtime/router.py | 关键词：OTA, 渠道, OpenClaw | chunks：1
+- [测试验收] github-hotel-target/skills/s14-operation-diagnosis/scripts/s14_local_report.py | 关键词：OTA, 渠道, 测试, PMS, OpenClaw, 诊断 | chunks：8
+- [项目资料] github-hotel-target/skills/s14-operation-diagnosis/templates/ota_diagnosis_report_demo.template.html | 关键词：OTA, 诊断 | chunks：8
+- [项目资料] github-hotel-target/skills/s14-operation-diagnosis/tests/excel_smoke_test.py | 关键词：RevPAR, OTA, 渠道, 订单 | chunks：1
+- [项目资料] github-hotel-target/skills/s14-operation-diagnosis/tests/smoke_test.py | 关键词：RevPAR, ADR, OCC, OTA, OpenClaw | chunks：1
+- [字段契约] github-hotel-target/skills/s14-operation-diagnosis/tests/test_reply_formatter.py | 关键词：OTA, 字段, Agent, 测试, 诊断 | chunks：2
+- [项目资料] github-hotel-target/tests/harness/fixtures/holiday_2026.json | 关键词：无 | chunks：1
+- [项目资料] github-hotel-target/tests/harness/fixtures/s16_fresh_progress.json | 关键词：无 | chunks：1
+- [项目资料] github-hotel-target/tests/harness/fixtures/s2_fresh_snapshot.json | 关键词：RevPAR, ADR, OCC | chunks：1
+- [项目资料] github-hotel-target/tests/harness/fixtures/wttr_success.json | 关键词：无 | chunks：1
+- [项目资料] github-hotel-target/tests/harness/fixtures/wttr_timeout.json | 关键词：无 | chunks：1
+- [项目资料] github-hotel-target/tests/harness/run_harness.py | 关键词：OTA | chunks：1
+- [项目资料] github-hotel-target/tests/harness/scenarios/command_menu.json | 关键词：OTA | chunks：1
+- [项目资料] github-hotel-target/tests/harness/scenarios/p0_safety.json | 关键词：OTA, 订单 | chunks：1
+- [项目资料] github-hotel-target/tests/harness/scenarios/s16_progress.json | 关键词：OTA | chunks：1
+- [项目资料] github-hotel-target/tests/harness/scenarios/s4_calendar.json | 关键词：OTA | chunks：1
+- [项目资料] github-hotel-target/tests/harness/scenarios/s4_market_mcp.json | 关键词：OTA | chunks：1
+- [项目资料] github-hotel-target/tests/harness/scenarios/s5_s6_pricing.json | 关键词：OCC, OTA, PMS | chunks：1
+- [项目资料] github-hotel-target/tests/test_security_and_freshness.py | 关键词：OCC, OTA, 订单 | chunks：9
+- [Agent技能] hotel--ota-ai/AGENTS.md | 关键词：价格, 收益, RevPAR, ADR, OTA, 渠道, 房态, 订单, 字段, Agent, 测试, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/BOOTSTRAP.md | 关键词：价格, 收益, ADR, OTA, 渠道, 订单, 字段, Agent, 测试, 验收, 飞书, OpenClaw, 诊断 | chunks：1
+- [字段契约] hotel--ota-ai/MEMORY.md | 关键词：OTA, 订单, 字段, Agent, 测试, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/README.md | 关键词：收益, OTA, 渠道, 房态, 订单, 字段, Agent, 测试, 验收, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/TOOLS.md | 关键词：收益, OTA, 渠道, 订单, 飞书, PMS, OpenClaw, 诊断 | chunks：2
+- [项目资料] hotel--ota-ai/config/database-source.example.json | 关键词：OTA | chunks：2
+- [项目资料] hotel--ota-ai/config/feishu-role-map.example.json | 关键词：OTA | chunks：1
+- [需求文档] hotel--ota-ai/config/openclaw.example.json | 关键词：OTA, Agent, OpenClaw | chunks：1
+- [字段契约] hotel--ota-ai/examples/feishu-prompts.md | 关键词：价格, 库存, OTA, 订单, 字段, Agent, 测试, 飞书, PMS, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/OpenClaw实施教程.md | 关键词：OTA, 渠道, Agent, 测试, 飞书, OpenClaw | chunks：7
+- [需求文档] hotel--ota-ai/requirements/OpenClaw常用配置命令.md | 关键词：OTA, 字段, 测试, 飞书, OpenClaw | chunks：2
+- [需求文档] hotel--ota-ai/requirements/OpenClaw总控Agent提示词.md | 关键词：收益, RevPAR, ADR, OTA, 渠道, 房态, 订单, 字段, Agent, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/OpenClaw自动适配提示词.md | 关键词：OTA, 渠道, 房态, 订单, 字段, Agent, 验收, 飞书, PMS, OpenClaw, 诊断 | chunks：2
+- [需求文档] hotel--ota-ai/requirements/OpenClaw项目适配说明.md | 关键词：OTA, 渠道, Agent, 测试, 验收, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/P0P1交付清单.md | 关键词：价格, 库存, 收益, RevPAR, ADR, OTA, 渠道, 房态, 订单, 字段, Agent, 测试, 验收, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/P0P1技能测试矩阵.md | 关键词：RevPAR, ADR, OTA, 订单, 测试, 飞书, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/runtime模块化说明.md | 关键词：价格, 收益, OTA, 订单, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/skill_specs.yaml | 关键词：OTA, 字段, Agent, PMS, OpenClaw | chunks：2
+- [需求文档] hotel--ota-ai/requirements/价格进度转化字段规则.md | 关键词：价格, OTA, 订单, 字段, 飞书, PMS, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/功能蓝图映射.md | 关键词：价格, 收益, OTA, 渠道, 房态, 订单, 字段, PMS, OpenClaw, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/功能蓝图落地矩阵.md | 关键词：价格, 收益, RevPAR, OTA, 渠道, 订单, 字段, 验收, 飞书, PMS, OpenClaw, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/商用准入清单.md | 关键词：ADR, OTA, 渠道, 订单, 字段, Agent, 测试, 飞书 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/多源依据治理.md | 关键词：OTA, 订单, 字段, Agent, 飞书, OpenClaw | chunks：1
+- [需求文档] hotel--ota-ai/requirements/数字员工长期记忆与归档规范.md | 关键词：价格, ADR, OTA, 订单, 字段, Agent, 测试, 验收, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/数据字段字典与来源优先级.md | 关键词：价格, 库存, 收益, RevPAR, ADR, OCC, OTA, 渠道, 房态, 订单, 字段, 验收, 飞书, PMS, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/渠道API适配策略.md | 关键词：价格, 库存, OTA, 渠道, 房态, 订单, 字段, 验收, 飞书, PMS, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/生产阶段注意事项.md | 关键词：OTA, 订单, 字段, Agent, 测试, 飞书, OpenClaw, 诊断 | chunks：2
+- [需求文档] hotel--ota-ai/requirements/统一数据契约.md | 关键词：库存, OTA, 渠道, 房态, 订单, 字段, 飞书, PMS, 诊断 | chunks：2
+- [需求文档] hotel--ota-ai/requirements/脚本固化边界.md | 关键词：价格, 收益, OTA, 订单, 字段, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/资料索引与引用规范.md | 关键词：收益, OTA, 订单, 字段, Agent, 验收, 飞书, OpenClaw | chunks：1
+- [需求文档] hotel--ota-ai/requirements/需求文档.md | 关键词：收益, OTA, 渠道, 房态, 订单, 字段, 验收, 飞书, PMS, OpenClaw, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/飞书输出规范.md | 关键词：价格, 库存, 收益, RevPAR, ADR, OTA, 渠道, 订单, 字段, 飞书, PMS, OpenClaw, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/requirements/验收用例.md | 关键词：ADR, OTA, 订单, Agent, 验收, 飞书, PMS, OpenClaw | chunks：4
+- [项目资料] hotel--ota-ai/runtime/__init__.py | 关键词：OTA, OpenClaw | chunks：1
+- [项目资料] hotel--ota-ai/runtime/adapters/__init__.py | 关键词：PMS | chunks：1
+- [项目资料] hotel--ota-ai/runtime/adapters/beyondh.py | 关键词：OTA, PMS | chunks：1
+- [项目资料] hotel--ota-ai/runtime/adapters/database.py | 关键词：OTA, PMS | chunks：11
+- [项目资料] hotel--ota-ai/runtime/adapters/dindanll.py | 关键词：OTA, 订单, PMS | chunks：1
+- [项目资料] hotel--ota-ai/runtime/adapters/meituan.py | 关键词：OTA | chunks：1
+- [项目资料] hotel--ota-ai/runtime/cli.py | 关键词：OCC, OTA | chunks：5
+- [项目资料] hotel--ota-ai/runtime/common.py | 关键词：OTA | chunks：1
+- [项目资料] hotel--ota-ai/runtime/contracts.py | 关键词：OTA | chunks：1
+- [项目资料] hotel--ota-ai/runtime/decisions/__init__.py | 关键词：无 | chunks：1
+- [项目资料] hotel--ota-ai/runtime/decisions/baseline.py | 关键词：OCC, OTA | chunks：2
+- [项目资料] hotel--ota-ai/runtime/decisions/calendar.py | 关键词：OTA | chunks：4
+- [项目资料] hotel--ota-ai/runtime/decisions/command_menu.py | 关键词：OTA | chunks：5
+- [项目资料] hotel--ota-ai/runtime/decisions/competition.py | 关键词：收益, OTA | chunks：1
+- [项目资料] hotel--ota-ai/runtime/decisions/customer.py | 关键词：ADR, OTA, 订单 | chunks：1
+- [项目资料] hotel--ota-ai/runtime/decisions/demand.py | 关键词：RevPAR, ADR, OCC, OTA | chunks：2
+- [项目资料] hotel--ota-ai/runtime/decisions/deviation.py | 关键词：OTA | chunks：3
+- [项目资料] hotel--ota-ai/runtime/decisions/ota_health.py | 关键词：OTA, 诊断 | chunks：1
+- [项目资料] hotel--ota-ai/runtime/decisions/pricing.py | 关键词：OTA, PMS | chunks：6
+- [字段契约] hotel--ota-ai/runtime/decisions/promotion.py | 关键词：价格, OTA, 字段 | chunks：1
+- [项目资料] hotel--ota-ai/runtime/decisions/reputation.py | 关键词：OTA | chunks：1
+- [项目资料] hotel--ota-ai/runtime/decisions/tasks.py | 关键词：价格, 库存, OTA, 订单 | chunks：1
+- [项目资料] hotel--ota-ai/runtime/hotel_ota_runtime.py | 关键词：OTA, OpenClaw | chunks：1
+- [项目资料] hotel--ota-ai/runtime/safety/__init__.py | 关键词：无 | chunks：1
+- [项目资料] hotel--ota-ai/runtime/safety/approvals.py | 关键词：OTA | chunks：1
+- [项目资料] hotel--ota-ai/runtime/safety/auth.py | 关键词：OTA | chunks：2
+- [字段契约] hotel--ota-ai/runtime/safety/feishu_output.py | 关键词：ADR, OTA, 订单, 飞书, OpenClaw, 诊断 | chunks：2
+- [项目资料] hotel--ota-ai/runtime/safety/guards.py | 关键词：OTA | chunks：1
+- [项目资料] hotel--ota-ai/runtime/storage.py | 关键词：OTA, PMS | chunks：2
+- [项目资料] hotel--ota-ai/skills/hotel-ota/_shared/README.md | 关键词：OTA, 渠道, 订单, 飞书 | chunks：1
+- [项目资料] hotel--ota-ai/skills/hotel-ota/_shared/beyondh-api-map.md | 关键词：渠道 | chunks：1
+- [字段契约] hotel--ota-ai/skills/hotel-ota/_shared/channel-api-map.md | 关键词：价格, 库存, OTA, 渠道, 房态, 订单, 字段, Agent, 验收, 飞书, PMS | chunks：1
+- [字段契约] hotel--ota-ai/skills/hotel-ota/_shared/common-contract.md | 关键词：OTA, 渠道, 房态, 订单, 字段, 验收, 飞书, PMS, 诊断 | chunks：1
+- [字段契约] hotel--ota-ai/skills/hotel-ota/_shared/operating-policy.md | 关键词：收益, 房态, 字段, Agent, 验收, 飞书, OpenClaw, 诊断 | chunks：1
+- [需求文档] hotel--ota-ai/skills/hotel-ota/_shared/prompts/output-template.md | 关键词：渠道, 订单, 字段, 飞书, 诊断 | chunks：1
+- [字段契约] hotel--ota-ai/skills/hotel-ota/s01-control-config/SKILL.md | 关键词：价格, OTA, 渠道, 房态, 字段, 飞书, PMS | chunks：1
+- [项目资料] hotel--ota-ai/skills/hotel-ota/s01-control-config/references/examples.md | 关键词：价格, 飞书 | chunks：1
+- [字段契约] hotel--ota-ai/skills/hotel-ota/s01-control-config/references/input_schema.json | 关键词：无 | chunks：1
+- [字段契约] hotel--ota-ai/skills/hotel-ota/s01-control-config/references/output_schema.json | 关键词：无 | chunks：1

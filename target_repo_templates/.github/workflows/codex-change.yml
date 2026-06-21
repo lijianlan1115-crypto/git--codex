@@ -1,0 +1,166 @@
+name: Codex requirement change
+
+on:
+  workflow_dispatch:
+    inputs:
+      requirement:
+        description: "需求变更说明，例如：RevPAR 计算公式需排除取消订单"
+        required: true
+        type: string
+      base_branch:
+        description: "要基于哪个分支修改"
+        required: false
+        default: "main"
+        type: string
+      focus_paths:
+        description: "可选：重点关注路径，逗号分隔，例如 runtime,requirements,tests"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  codex_change:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.base_branch }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Prepare context summary
+        run: |
+          {
+            echo "# Codex Change Request"
+            echo
+            echo "## Requirement"
+            echo "${{ inputs.requirement }}"
+            echo
+            echo "## Focus paths"
+            echo "${{ inputs.focus_paths }}"
+            echo
+            echo "## Recent commits"
+            git log -5 --oneline
+            echo
+            echo "## Important knowledge locations"
+            find requirements docs contracts runtime tests skills agents -maxdepth 2 -type f 2>/dev/null | sort | sed -n '1,220p'
+          } > .github/codex/change-request.md
+
+      - name: Run Codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          sandbox: workspace-write
+          output-file: codex-output.md
+          prompt: |
+            你是“研发协同变更分析与测试预警”代码修改助手。
+
+            需求变更：
+            ${{ inputs.requirement }}
+
+            重点关注路径：
+            ${{ inputs.focus_paths }}
+
+            请在当前 GitHub Actions runner 的仓库中完成以下工作：
+
+            1. 先阅读 `.github/codex/change-request.md` 和 `.github/codex/prompts/requirement-change.md`。
+            2. 根据需求在仓库内检索相关资料，优先阅读：
+               - `requirements/`
+               - `docs/`
+               - `contracts/`
+               - `runtime/`
+               - `tests/`
+               - `skills/`
+               - `agents/`
+            3. 一次性同步修改所有必要的代码、需求文档、字段契约、功能说明和测试用例。
+            4. 不要修改无关文件，不要提交密钥、账号、真实密码或本地私有路径。
+            5. 修改后生成 `docs/automation/latest_change_impact.md`，内容必须包含：
+               - 改了什么
+               - 影响范围
+               - 影响的模块、字段、Agent 或测试环境
+               - 风险等级
+               - 验证方案
+               - 通过标准
+               - 失败标准
+               - 需要人工确认的点
+            6. 如果无法完成真实代码修改，请至少生成明确的修改计划和阻塞原因。
+            7. 尽量运行相关测试；若无法运行，说明原因和建议命令。
+
+      - name: Preserve Codex output and clean temporary context
+        run: |
+          mkdir -p "$RUNNER_TEMP/codex-change"
+          if [ -f codex-output.md ]; then
+            cp codex-output.md "$RUNNER_TEMP/codex-change/codex-output.md"
+          fi
+          rm -f codex-output.md .github/codex/change-request.md
+
+      - name: Check diff
+        id: diff
+        run: |
+          git status --short
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit changes
+        if: steps.diff.outputs.has_changes == 'true'
+        run: |
+          branch="codex/requirement-change-${{ github.run_id }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add -A
+          git commit -m "Codex requirement change"
+          git push origin "$branch"
+          echo "CODEX_BRANCH=$branch" >> "$GITHUB_ENV"
+
+      - name: Create pull request
+        if: steps.diff.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUIREMENT: ${{ inputs.requirement }}
+        run: |
+          {
+            echo "## 需求变更"
+            echo
+            echo "$REQUIREMENT"
+            echo
+            echo "## Codex 输出"
+            echo
+            if [ -f "$RUNNER_TEMP/codex-change/codex-output.md" ]; then
+              cat "$RUNNER_TEMP/codex-change/codex-output.md"
+            else
+              echo "未生成 codex-output.md"
+            fi
+            echo
+            echo "## 影响分析报告"
+            echo
+            if [ -f docs/automation/latest_change_impact.md ]; then
+              cat docs/automation/latest_change_impact.md
+            else
+              echo "未生成 docs/automation/latest_change_impact.md"
+            fi
+          } > pr-body.md
+
+          gh pr create \
+            --base "${{ inputs.base_branch }}" \
+            --head "$CODEX_BRANCH" \
+            --title "Codex需求变更：${REQUIREMENT:0:48}" \
+            --body-file pr-body.md
+
+      - name: No changes summary
+        if: steps.diff.outputs.has_changes != 'true'
+        run: |
+          echo "Codex did not create any repository changes."
+          if [ -f codex-output.md ]; then
+            cat codex-output.md
+          fi

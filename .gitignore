@@ -1,0 +1,15 @@
+.DS_Store
+__pycache__/
+*.pyc
+venv/
+.env
+*.log
+outputs/
+*.sqlite
+*.db
+*密码*
+*账号*
+*password*
+*secret*
+*token*
+config/openclaw.json

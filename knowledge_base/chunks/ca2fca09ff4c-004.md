@@ -1,0 +1,112 @@
+# hotel--ota-ai 2/runtime/decisions/calendar.py
+
+类型：项目资料
+关键词：OTA
+
+---
+
+am_allowed")),
+ "actual_source": payload.get("actual_source"),
+ "target_source": payload.get("target_source"),
+ }
+ return context["freshness_status"] == "fresh" and context["downstream_allowed"], context
+
+def market_context(args: argparse.Namespace) -> None:
+ business_date = args.date or today()
+ calendar_context = get_calendar_day(args.db, business_date)
+ weather_provider = args.weather_provider
+ if args.weather_fixture and weather_provider == "weather_mcp":
+ weather_provider = "weather_fixture"
+ weather_context = normalize_weather(_load_json_file(args.weather_fixture), weather_provider)
+ operating_payload = _load_json_file(args.operating_fixture)
+ if operating_payload is None and database_source_enabled():
+ db_result = database_template_result("operating_snapshot", args.hotel_id, date=business_date)
+ operating_payload = (db_result.get("payload") or {}) if db_result.get("status") == "ok" else None
+ operating_fresh, operating_context = _fresh_operating_context(operating_payload)
+ progress_fresh, progress_context = _fresh_progress_context(_load_json_file(args.progress_fixture))
+ weather_available = weather_context.get("status") == "ok"
+ downstream_allowed = (
+ calendar_context.get("source_quality") in {"confirmed", "computed"}
+ and weather_available
+ and operating_fresh
+ and progress_fresh
+ )
+ blocked_reason = None
+ if not weather_available:
+ blocked_reason = "weather_context_unavailable"
+ if not operating_fresh or not progress_fresh:
+ blocked_reason = "missing_fresh_operating_progress"
+ if calendar_context.get("is_adjusted_workday"):
+ demand_signal = "neutral"
+ elif calendar_context.get("is_holiday") and downstream_allowed:
+ demand_signal = "strong"
+ elif weather_context.get("weather_risk_level") in {"medium", "high"}:
+ demand_signal = "cautious"
+ else:
+ demand_signal = "neutral"
+ emit(
+ {
+ "status": "ok" if downstream_allowed else "data_gap",
+ "hotel_id": args.hotel_id,
+ "business_date": business_date,
+ "calendar_context": calendar_context,
+ "weather_context": weather_context,
+ "event_context": {"status": "not_enabled_v1", "local_event_count": calendar_context.get("local_event_count", 0)},
+ "competitor_context": {"status": "s7_aggregate_pending"},
+ "operating_context": operating_context,
+ "progress_context": progress_context,
+ "demand_signal": demand_signal,
+ "source_quality": "mixed" if weather_available else "calendar_only",
+ "freshness_status": "fresh" if downstream_allowed else "missing_date",
+ "data_snapshot_time": now_local(),
+ "downstream_allowed": downstream_allowed,
+ "downstream_blocked_reason": None if downstream_allowed else blocked_reason,
+ "approval_allowed": False,
+ "next_skill": "S5" if downstream_allowed else "S14",
+ }
+ )
+
+def event_discover(args: argparse.Namespace) -> None:
+ _ensure_calendar_tables(args.db)
+ fixture = _load_json_file(args.fixture_file)
+ if not fixture:
+ emit(
+ {
+ "status": "data_gap",
+ "hotel_id": args.hotel_id,
+ "date_range": args.date_range,
+ "reason": "event_discovery_provider_not_configured",
+ "source_capability": "pending_mcp_or_search",
+ "events_imported": 0,
+ }
+ )
+ return
+ events = fixture.get("events") if isinstance(fixture, dict) else fixture
+ if not isinstance(events, list):
+ events = []
+ with closing(connect(args.db)) as conn:
+ with conn:
+ for item in events:
+ conn.execute(
+ """
+ INSERT INTO event_candidates (
+ hotel_id, date, event_name, event_type, location, distance_km,
+ source_url, confidence, expected_heat, status, created_at
+ )
+ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ """,
+ (
+ args.hotel_id,
+ item.get("date"),
+ item.get("event_name") or item.get("name") or "unknown_event",
+ item.get("event_type"),
+ item.get("location"),
+ item.get("distance_km"),
+ item.get("source_url"),
+ float(item.get("confidence") or 0),
+ item.get("expected_heat") or "unknown",
+ item.get("status") or "candidate",
+ now_local(),
+ ),
+ )
+ emit({"status": "ok", "hotel_id": args.hotel_id, "events_imported": len(events)})

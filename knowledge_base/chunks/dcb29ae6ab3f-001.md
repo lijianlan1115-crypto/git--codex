@@ -1,0 +1,102 @@
+# openclaw-s14-operation-diagnosis-skill/config/hotel_pricing_sources.yaml
+
+类型：项目资料
+关键词：RevPAR, ADR, OCC, OTA, 渠道, 订单, 字段, OpenClaw
+
+---
+
+# S14 production database source contract.
+# Database: hotel_pricing
+# Runtime file: runtime/data_fetcher.py
+#
+# OpenClaw must not pass these facts as input. S14 reads these tables directly,
+# maps known column aliases to standard S14 fields, then calculates all scores
+# through runtime/calculator.py.
+
+database: hotel_pricing
+
+tables:
+ fact_daily_metrics:
+ time_grain: daily
+ purpose: "Daily operating, traffic, conversion, promotion, and reputation metrics."
+ date_aliases: ["data_date", "biz_date", "stat_date", "date", "日期", "营业日期", "业务日期"]
+ hotel_aliases: ["hotel_id", "hotel_code", "酒店ID", "门店ID"]
+ platform_aliases: ["platform", "channel", "ota_channel", "channel_source", "渠道", "平台", "OTA渠道"]
+ field_aliases:
+ hotel_name: ["hotel_name", "酒店名称", "门店名称"]
+ channel_source: ["channel_source", "渠道来源", "渠道名称", "渠道"]
+ revpar: ["revpar", "RevPAR", "平均可售房收入"]
+ adr: ["adr", "ADR", "平均房价", "客单价"]
+ occupancy: ["occupancy", "occ", "出租率", "入住率"]
+ room_revenue: ["room_revenue", "revenue", "gmv", "间夜收入", "客房收入", "订单金额"]
+ sold_room_nights: ["sold_room_nights", "room_nights", "night_count", "入住间夜", "售出间夜", "间夜数"]
+ available_room_nights: ["available_room_nights", "available_rooms", "可售间夜", "可售房量"]
+ exposure: ["exposure", "曝光量", "列表曝光", "展示次数"]
+ views: ["views", "浏览量", "详情浏览", "访客数", "UV"]
+ peer_rank: ["peer_rank", "竞争圈排名", "同行排名"]
+ booking_conversion_rate: ["booking_conversion_rate", "booking_rate", "预订转化率", "浏览-预订转化"]
+ payment_conversion_rate: ["payment_conversion_rate", "pay_rate", "支付转化率", "浏览-支付转化"]
+ lost_orders: ["lost_orders", "流失订单", "取消订单数"]
+ lost_amount: ["lost_amount", "流失金额", "取消金额"]
+ promo_amount: ["promo_amount", "推广订单金额", "推广成交金额"]
+ promo_cost: ["promo_cost", "推广花费", "广告消耗"]
+ promo_roi: ["promo_roi", "ROI", "推广ROI"]
+ promo_detail_ready: ["promo_detail_ready", "推广明细完整", "推广明细是否完整", "是否有推广明细"]
+ rating_total: ["rating_total", "平台评分", "评分"]
+ bad_review_rate: ["bad_review_rate", "差评率", "低分率"]
+ unreplied_reviews: ["unreplied_reviews", "未回复评价数", "未回复评论"]
+ field_completeness: ["field_completeness", "字段完整度", "数据完整度"]
+
+ fact_monthly_metrics:
+ time_grain: monthly
+ purpose: "Monthly metrics used when daily data is incomplete or when the requested period overlaps monthly aggregates."
+ date_aliases: ["month", "stat_month", "data_month", "period_start_date", "月份", "统计月份"]
+ period_end_aliases: ["period_end_date", "month_end", "结束日期", "周期结束"]
+ hotel_aliases: ["hotel_id", "hotel_code", "酒店ID", "门店ID"]
+ platform_aliases: ["platform", "channel", "ota_channel", "channel_source", "渠道", "平台", "OTA渠道"]
+ field_aliases:
+ hotel_name: ["hotel_name", "酒店名称", "门店名称"]
+ channel_source: ["channel_source", "渠道来源", "渠道名称", "渠道"]
+ revpar: ["revpar", "RevPAR", "平均可售房收入"]
+ adr: ["adr", "ADR", "平均房价", "客单价"]
+ occupancy: ["occupancy", "occ", "出租率", "入住率"]
+ room_revenue: ["room_revenue", "revenue", "gmv", "间夜收入", "客房收入", "订单金额"]
+ sold_room_nights: ["sold_room_nights", "room_nights", "night_count", "入住间夜", "售出间夜", "间夜数"]
+ available_room_nights: ["available_room_nights", "available_rooms", "可售间夜", "可售房量"]
+ exposure: ["exposure", "曝光量", "列表曝光", "展示次数"]
+ views: ["views", "浏览量", "详情浏览", "访客数", "UV"]
+ booking_conversion_rate: ["booking_conversion_rate", "booking_rate", "预订转化率", "浏览-预订转化"]
+ payment_conversion_rate: ["payment_conversion_rate", "pay_rate", "支付转化率", "浏览-支付转化"]
+ lost_orders: ["lost_orders", "流失订单", "取消订单数"]
+ lost_amount: ["lost_amount", "流失金额", "取消金额"]
+ promo_amount: ["promo_amount", "推广订单金额", "推广成交金额"]
+ promo_cost: ["promo_cost", "推广花费", "广告消耗"]
+ promo_roi: ["promo_roi", "ROI", "推广ROI"]
+ rating_total: ["rating_total", "平台评分", "评分"]
+ bad_review_rate: ["bad_review_rate", "差评率", "低分率"]
+ unreplied_reviews: ["unreplied_reviews", "未回复评价数", "未回复评论"]
+ field_completeness: ["field_completeness", "字段完整度", "数据完整度"]
+
+ jd01_bookings:
+ time_grain: booking
+ purpose: "Order and booking facts used for revenue, room nights, cancellations, and lost orders."
+ date_aliases: ["booking_date", "order_date", "biz_date", "created_date", "data_date", "预订日期", "订单日期"]
+ hotel_aliases: ["hotel_id", "hotel_code", "酒店ID", "门店ID"]
+ platform_aliases: ["platform", "channel", "ota_channel", "channel_source", "渠道", "平台", "OTA渠道"]
+ status_aliases: ["status", "order_status", "订单状态"]
+ field_aliases:
+ hotel_name: ["hotel_name", "酒店名称", "门店名称"]
+ channel_source: ["channel_source", "渠道来源", "渠道名称", "渠道"]
+ room_revenue: ["room_revenue", "pay_amount", "order_amount", "订单金额", "实付金额", "间夜收入"]
+ sold_room_nights: ["sold_room_nights", "room_nights", "night_count", "间夜数", "入住间夜"]
+ lost_orders: ["lost_orders", "cancel_count", "取消订单数", "流失订单"]
+ lost_amount: ["lost_amount", "cancel_amount", "取消金额", "流失金额"]
+
+ jd04_extensions:
+ time_grain: event
+ purpose: "Extension/manual page and action facts used for page quality and execution review."
+ date_aliases: ["data_date", "biz_date", "created_date", "日期"]
+ hotel_aliases: ["hotel_id", "hotel_code", "酒店ID", "门店ID"]
+ platform_aliases: ["platform", "channel", "ota_channel", "channel_source", "渠道", "平台", "OTA渠道"]
+ field_aliases:
+ hotel_name: ["hotel_name", "酒店名称", "

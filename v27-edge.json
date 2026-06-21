@@ -1,0 +1,427 @@
+[
+  {
+    "from": "N001",
+    "to": "N002",
+    "type": "data_flow"
+  },
+  {
+    "from": "N002",
+    "to": "N003",
+    "type": "data_flow"
+  },
+  {
+    "from": "N003",
+    "to": "N004",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N005",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N006",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N007",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N008",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N009",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N010",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N011",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N012",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N013",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N014",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N015",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N016",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N017",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N019",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N020",
+    "type": "data_flow"
+  },
+  {
+    "from": "N004",
+    "to": "N021",
+    "type": "data_flow"
+  },
+  {
+    "from": "N005",
+    "to": "N009",
+    "type": "data_flow"
+  },
+  {
+    "from": "N005",
+    "to": "N010",
+    "type": "data_flow"
+  },
+  {
+    "from": "N005",
+    "to": "N011",
+    "type": "data_flow"
+  },
+  {
+    "from": "N005",
+    "to": "N012",
+    "type": "data_flow"
+  },
+  {
+    "from": "N005",
+    "to": "N014",
+    "type": "data_flow"
+  },
+  {
+    "from": "N005",
+    "to": "N015",
+    "type": "data_flow"
+  },
+  {
+    "from": "N005",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N005",
+    "to": "N020",
+    "type": "data_flow"
+  },
+  {
+    "from": "N006",
+    "to": "N010",
+    "type": "data_flow"
+  },
+  {
+    "from": "N006",
+    "to": "N015",
+    "type": "data_flow"
+  },
+  {
+    "from": "N006",
+    "to": "N020",
+    "type": "data_flow"
+  },
+  {
+    "from": "N006",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N007",
+    "to": "N012",
+    "type": "data_flow"
+  },
+  {
+    "from": "N007",
+    "to": "N015",
+    "type": "data_flow"
+  },
+  {
+    "from": "N007",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N008",
+    "to": "N009",
+    "type": "data_flow"
+  },
+  {
+    "from": "N008",
+    "to": "N017",
+    "type": "data_flow"
+  },
+  {
+    "from": "N008",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N008",
+    "to": "N019",
+    "type": "data_flow"
+  },
+  {
+    "from": "N009",
+    "to": "N015",
+    "type": "data_flow"
+  },
+  {
+    "from": "N009",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N009",
+    "to": "N019",
+    "type": "data_flow"
+  },
+  {
+    "from": "N010",
+    "to": "N011",
+    "type": "data_flow"
+  },
+  {
+    "from": "N010",
+    "to": "N015",
+    "type": "data_flow"
+  },
+  {
+    "from": "N010",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N010",
+    "to": "N020",
+    "type": "data_flow"
+  },
+  {
+    "from": "N011",
+    "to": "N012",
+    "type": "data_flow"
+  },
+  {
+    "from": "N011",
+    "to": "N015",
+    "type": "data_flow"
+  },
+  {
+    "from": "N011",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N011",
+    "to": "N019",
+    "type": "data_flow"
+  },
+  {
+    "from": "N011",
+    "to": "N020",
+    "type": "data_flow"
+  },
+  {
+    "from": "N012",
+    "to": "N013",
+    "type": "data_flow"
+  },
+  {
+    "from": "N012",
+    "to": "N015",
+    "type": "data_flow"
+  },
+  {
+    "from": "N012",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N012",
+    "to": "N021",
+    "type": "data_flow"
+  },
+  {
+    "from": "N013",
+    "to": "N012",
+    "type": "data_flow"
+  },
+  {
+    "from": "N013",
+    "to": "N015",
+    "type": "data_flow"
+  },
+  {
+    "from": "N013",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N013",
+    "to": "N021",
+    "type": "data_flow"
+  },
+  {
+    "from": "N014",
+    "to": "N015",
+    "type": "data_flow"
+  },
+  {
+    "from": "N014",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N014",
+    "to": "N019",
+    "type": "data_flow"
+  },
+  {
+    "from": "N015",
+    "to": "N012",
+    "type": "data_flow"
+  },
+  {
+    "from": "N015",
+    "to": "N016",
+    "type": "data_flow"
+  },
+  {
+    "from": "N015",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N015",
+    "to": "N019",
+    "type": "data_flow"
+  },
+  {
+    "from": "N016",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N016",
+    "to": "N019",
+    "type": "data_flow"
+  },
+  {
+    "from": "N017",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N017",
+    "to": "N019",
+    "type": "data_flow"
+  },
+  {
+    "from": "N018",
+    "to": "用户",
+    "type": "data_flow"
+  },
+  {
+    "from": "N018",
+    "to": "飞书",
+    "type": "data_flow"
+  },
+  {
+    "from": "N018",
+    "to": "N019",
+    "type": "data_flow"
+  },
+  {
+    "from": "N019",
+    "to": "requirements",
+    "type": "data_flow"
+  },
+  {
+    "from": "N019",
+    "to": "skill_rule",
+    "type": "data_flow"
+  },
+  {
+    "from": "N019",
+    "to": "runtime_test",
+    "type": "data_flow"
+  },
+  {
+    "from": "N019",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N020",
+    "to": "N009",
+    "type": "data_flow"
+  },
+  {
+    "from": "N020",
+    "to": "N012",
+    "type": "data_flow"
+  },
+  {
+    "from": "N020",
+    "to": "N015",
+    "type": "data_flow"
+  },
+  {
+    "from": "N020",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N021",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N021",
+    "to": "N019",
+    "type": "data_flow"
+  },
+  {
+    "from": "N022",
+    "to": "N018",
+    "type": "data_flow"
+  },
+  {
+    "from": "N022",
+    "to": "N019",
+    "type": "data_flow"
+  }
+]

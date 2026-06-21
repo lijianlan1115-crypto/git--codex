@@ -1,0 +1,26 @@
+# openclaw-s14-operation-diagnosis-skill/templates/ota_diagnosis_report_demo.template.html
+
+类型：项目资料
+关键词：OTA, 诊断
+
+---
+
+th>RevPAR</th><th>系统判断</th><th>整改建议</th></tr></thead><tbody><tr><td>汇赢·麻将四人间</td><td>160</td><td>97.69</td><td><span class='status bad'>48.5%</span></td><td>47.36</td><td><span class='status bad'>低效房型</span></td><td>调价、改造、下架或重排展示</td></tr><tr><td>汇赢·麻将四人间</td><td>160</td><td>112.44</td><td><span class='status bad'>48.5%</span></td><td>54.51</td><td><span class='status bad'>低效房型</span></td><td>调价、改造、下架或重排展示</td></tr><tr><td>舒享丨上下铺麻将房</td><td>125</td><td>114.36</td><td><span class='status bad'>52.0%</span></td><td>59.47</td><td><span class='status bad'>低效房型</span></td><td>调价、改造、下架或重排展示</td></tr><tr><td>乐享·亲子三人间</td><td>33</td><td>107.93</td><td><span class='status bad'>59.8%</span></td><td>64.49</td><td><span class='status bad'>低效房型</span></td><td>调价、改造、下架或重排展示</td></tr><tr><td>汇赢·麻将双床房</td><td>160</td><td>112.44</td><td><span class='status bad'>0.0%</span></td><td>72.38</td><td><span class='status bad'>低效房型</span></td><td>调价、改造、下架或重排展示</td></tr><tr><td>至臻·电竞大床房</td><td>1749</td><td>136.70</td><td><span class='status bad'>0.0%</span></td><td>111.61</td><td><span class='status bad'>低效房型</span></td><td>调价、改造、下架或重排展示</td></tr><tr><td>至臻·电竞双床房</td><td>795</td><td>130.25</td><td><span class='status bad'>0.0%</span></td><td>116.73</td><td><span class='status bad'>低效房型</span></td><td>调价、改造、下架或重排展示</td></tr><tr><td>开黑·电竞双床房</td><td>159</td><td>138.77</td><td><span class='status good'>80.0%</span></td><td>111.06</td><td><span class='status good'>健康房型</span></td><td>保持监控，观察价格和库存</td></tr><tr><td>独享·电竞单人间</td><td>125</td><td>128.60</td><td><span class='status good'>89.4%</span></td><td>114.96</td><td><span class='status good'>健康房型</span></td><td>保持监控，观察价格和库存</td></tr><tr><td>竞技·电竞四人间</td><td>159</td><td>219.66</td><td><span class='status warn'>78.0%</span></td><td>171.31</td><td><span class='status warn'>中等房型</span></td><td>保持监控，观察价格和库存</td></tr></tbody></table></div></section>
+ <section id="promotion"><div class="section-head"><div><h2>推广效率表</h2><p>各渠道推广数据对比</p></div><span class="status warn">CPC缺失</span></div><div class="section-body">
+<div data-channel-section="fliggy" style="display: block">
+ <h4 style="color:#168a4a;margin-bottom:8px">飞猪推广效率</h4>
+ <table class='data-table'><thead><tr><th>指标</th><th>值</th><th>口径</th><th>判断</th></tr></thead><tbody><tr><td>推广状态</td><td>推广中：钻石推广包</td><td>飞猪推广</td><td>推广开关</td></tr><tr><td>推广订单金额</td><td>3,423.77</td><td>近30日</td><td>推广产出</td></tr><tr><td>推广订单数</td><td>未获取</td><td>近30日</td><td>推广产出</td></tr><tr><td>总花费</td><td>233.27</td><td>近30日</td><td>推广成本</td></tr><tr><td>ROI</td><td>14.68</td><td>订单金额/总花费</td><td>推广效率</td></tr></tbody></table>
+</div>
+<div data-channel-section="ctrip" style="display: none">
+ <h4 style="color:#168a4a;margin-bottom:8px">携程推广效率</h4>
+ <table class='data-table'><thead><tr><th>指标</th><th>值</th><th>口径</th><th>判断</th></tr></thead><tbody><tr><td>推广状态</td><td>正常</td><td>携程推广</td><td>推广开关</td></tr><tr><td>推广订单金额</td><td>12,000.00</td><td>近30日</td><td>推广产出</td></tr><tr><td>推广订单数</td><td>8</td><td>近30日</td><td>推广产出</td></tr><tr><td>总花费</td><td>1,500.00</td><td>近30日</td><td>推广成本</td></tr><tr><td>ROI</td><td>8.00</td><td>订单金额/总花费</td><td>推广效率</td></tr></tbody></table>
+</div>
+<div data-channel-section="meituan" style="display: none">
+ <h4 style="color:#168a4a;margin-bottom:8px">美团推广效率</h4>
+ <table class='data-table'><thead><tr><th>指标</th><th>值</th><th>口径</th><th>判断</th></tr></thead><tbody><tr><td>推广状态</td><td>正常</td><td>美团推广</td><td>推广开关</td></tr><tr><td>推广订单金额</td><td>6,500.00</td><td>近30日</td><td>推广产出</td></tr><tr><td>推广订单数</td><td>5</td><td>近30日</td><td>推广产出</td></tr><tr><td>总花费</td><td>800.00</td><td>近30日</td><td>推广成本</td></tr><tr><td>ROI</td><td>8.12</td><td>订单金额/总花费</td><td>推广效率</td></tr></tbody></table>
+</div>
+<div data-channel-section="elong" style="display: none">
+ <h4 style="color:#168a4a;margin-bottom:8px">艺龙推广效率</h4>
+ <table class='data-table'><thead><tr><th>指标</th><th>值</th><th>口径</th><th>判断</th></tr></thead><tbody><tr><td>推广状态</td><td>正常</td><td>艺龙推广</td><td>推广开关</td></tr><tr><td>推广订单金额</td><td>2,800.00</td><td>近30日</td><td>推广产出</td></tr><tr><td>推广订单数</td><td>2</td><td>近30日</td><td>推广产出</td></tr><tr><td>总花费</td><td>300.00</td><td>近30日</td><td>推广成本</td></tr><tr><td>ROI</td><td>9.33</td><td>订单金额/总花费</td><td>推广效率</td></tr></tbody></table>
+</div></div></section>
+ <section id="tasks"><div class="section-head"><div><h2>整改任务表</h2><p>动作、负责人、截止时间、复盘指标，P0/P1/P2优先级</p></div></div><div class="section-body"><table class='data-table'><thead><tr><th>优先级</th><th>负责人</th><th>整改动作</th><th>复盘指标</th><th>周期</th></tr></thead><tbody><tr><td>P0</td><td>OTA运营</td><td>补采飞猪经营数据折线趋势和直通车曝光/点击/CPC</td><td>字段完整度、推广ROI、浏览-支付转化</td><td>3天</td></tr><tr><td>P0</td><td>OTA运营</td><td>检查房型权益、活动价、退改规则和点评信任项</td><td>浏览-支付转化率、支付订单、RevPAR</td><td>7天</td></tr><tr><td>P1</td><td>收益经理</td><td>复盘低效房型价格和库存，优先处理出租率低于60%的房型</td><td>房型RevPAR、出租率、ADR</td><td>7天</td></tr><tr><td>P1</td><td>门店店长</td><td>补拍首图、电竞设备细节和房型差异图，完善入口标签</td><td>详情页浏览、转化率、页面质量</td><td>14天</td></tr><tr><td>P2</td><td>运营负责人</td><td
