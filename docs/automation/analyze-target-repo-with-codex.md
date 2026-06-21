@@ -88,7 +88,7 @@ Body 示例：
     "requirement": "分析同事最近一次提交对价格、库存、收益策略的影响",
     "focus_paths": "requirements,runtime,tests,docs,contracts,config,skills",
     "ai_provider": "siliconflow",
-    "siliconflow_model": "Qwen/Qwen2.5-Coder-32B-Instruct"
+    "siliconflow_model": "deepseek-ai/DeepSeek-V3"
   }
 }
 ```
@@ -128,6 +128,14 @@ siliconflow
 
 默认模式。GitHub Actions 会调用硅基流动 OpenAI-compatible API 生成报告，
 适合没有 OpenAI API 额度时完成考核演示。
+
+如果硅基流动模型调用失败，workflow 会把错误原因写入：
+
+```text
+outputs/change_summary.md
+```
+
+这样排错时可以直接看报告文件，不需要只依赖 Actions 的简短错误摘要。
 
 ```text
 openai_codex

@@ -47,7 +47,7 @@ on:
       siliconflow_model:
         description: "硅基流动模型名称"
         required: false
-        default: "Qwen/Qwen2.5-Coder-32B-Instruct"
+        default: "deepseek-ai/DeepSeek-V3"
         type: string
 
 permissions:
@@ -149,6 +149,7 @@ jobs:
 
           python << 'PY'
           import os
+          import traceback
           from pathlib import Path
           from openai import OpenAI
 
@@ -157,7 +158,7 @@ jobs:
           OUTPUTS = ROOT / "outputs"
           OUTPUTS.mkdir(exist_ok=True)
 
-          def read_text(path: Path, limit: int = 20000) -> str:
+          def read_text(path: Path, limit: int = 12000) -> str:
               if not path.exists():
                   return f"[missing] {path}"
               text = path.read_text(encoding="utf-8", errors="ignore")
@@ -176,7 +177,7 @@ jobs:
               }
               parts = []
               total_chars = 0
-              max_total_chars = 70000
+              max_total_chars = 30000
 
               for rel in focus_paths:
                   base = TARGET / rel
@@ -185,12 +186,12 @@ jobs:
                       continue
 
                   files = [base] if base.is_file() else sorted(p for p in base.rglob("*") if p.is_file())
-                  selected = [p for p in files if p.suffix.lower() in allowed_suffixes][:35]
+                  selected = [p for p in files if p.suffix.lower() in allowed_suffixes][:12]
                   parts.append(f"\n## {rel}\n收集文件数: {len(selected)}")
 
                   for path in selected:
                       rel_path = path.relative_to(TARGET)
-                      content = read_text(path, limit=6000)
+                      content = read_text(path, limit=2500)
                       block = f"\n### {rel_path}\n```text\n{content}\n```"
                       if total_chars + len(block) > max_total_chars:
                           parts.append("\n[focus context truncated]")
@@ -200,8 +201,8 @@ jobs:
 
               return "\n".join(parts)
 
-          context = read_text(OUTPUTS / "target_change_context.md", limit=30000)
-          diff = read_text(OUTPUTS / "target_diff.patch", limit=90000)
+          context = read_text(OUTPUTS / "target_change_context.md", limit=16000)
+          diff = read_text(OUTPUTS / "target_diff.patch", limit=45000)
           focus_context = collect_focus_files()
           requirement = os.environ.get("REQUIREMENT", "")
 
@@ -241,31 +242,84 @@ jobs:
           报告风格用于考核答辩，要清晰、可展示、能体现“GitHub Actions 本地化分析架构”。
           """
 
-          client = OpenAI(
-              api_key=os.environ["SILICONFLOW_API_KEY"],
-              base_url="https://api.siliconflow.cn/v1",
-          )
-
-          response = client.chat.completions.create(
-              model=os.environ.get("SILICONFLOW_MODEL") or "Qwen/Qwen2.5-Coder-32B-Instruct",
-              messages=[
-                  {
-                      "role": "system",
-                      "content": "你是资深研发协同影响分析专家，擅长从代码 diff、项目结构和需求文档中生成测试预警报告。",
-                  },
-                  {"role": "user", "content": prompt},
-              ],
-              temperature=0.2,
-          )
-
-          report = response.choices[0].message.content or ""
           header = """# 研发协同变更分析与测试预警报告
 
           > 生成方式：GitHub Actions checkout 目标仓库后，使用硅基流动 OpenAI-compatible API 在 runner 本地读取 diff/context 生成。
 
           """
-          (OUTPUTS / "change_summary.md").write_text(header + report.strip() + "\n", encoding="utf-8")
-          print("Generated outputs/change_summary.md")
+
+          client = OpenAI(
+              api_key=os.environ["SILICONFLOW_API_KEY"],
+              base_url="https://api.siliconflow.cn/v1",
+          )
+
+          preferred_model = os.environ.get("SILICONFLOW_MODEL") or "deepseek-ai/DeepSeek-V3"
+          fallback_models = [
+              preferred_model,
+              "Qwen/Qwen2.5-72B-Instruct",
+              "Qwen/Qwen2.5-Coder-32B-Instruct",
+              "Qwen/Qwen2.5-7B-Instruct",
+          ]
+          models = []
+          for model in fallback_models:
+              if model and model not in models:
+                  models.append(model)
+
+          errors = []
+          report = ""
+          used_model = ""
+
+          for model in models:
+              try:
+                  print(f"Trying SiliconFlow model: {model}")
+                  response = client.chat.completions.create(
+                      model=model,
+                      messages=[
+                          {
+                              "role": "system",
+                              "content": "你是资深研发协同影响分析专家，擅长从代码 diff、项目结构和需求文档中生成测试预警报告。",
+                          },
+                          {"role": "user", "content": prompt},
+                      ],
+                      temperature=0.2,
+                      max_tokens=3000,
+                  )
+                  report = response.choices[0].message.content or ""
+                  used_model = model
+                  break
+              except Exception as exc:
+                  message = f"{model}: {type(exc).__name__}: {exc}"
+                  print(message)
+                  errors.append(message)
+
+          if report:
+              report = f"模型：{used_model}\n\n" + report.strip()
+              (OUTPUTS / "change_summary.md").write_text(header + report + "\n", encoding="utf-8")
+              print("Generated outputs/change_summary.md")
+          else:
+              error_report = header + """
+          ## 生成失败
+
+          GitHub Actions 已经成功 checkout 目标仓库并生成 diff/context，但调用硅基流动模型失败。
+
+          ### 已尝试模型
+
+          """ + "\n".join(f"- {model}" for model in models) + """
+
+          ### 错误信息
+
+          ```text
+          """ + "\n".join(errors) + "\n\n" + traceback.format_exc() + """
+          ```
+
+          ### 下一步
+
+          1. 确认 `SILICONFLOW_API_KEY` 已配置到 `git--codex` 的 Actions Repository secrets。
+          2. 确认硅基流动账号有余额/额度。
+          3. 在扣子请求体里把 `siliconflow_model` 改成硅基流动控制台中实际可用的模型名称。
+          """
+              (OUTPUTS / "change_summary.md").write_text(error_report, encoding="utf-8")
+              print("Generated diagnostic outputs/change_summary.md")
           PY
 
       - name: Run Codex impact analysis
