@@ -1,0 +1,1117 @@
+## Changed files
+runtime/adapters/database.py
+runtime/cli.py
+runtime/decisions/calendar.py
+runtime/decisions/command_menu.py
+runtime/decisions/deviation.py
+runtime/decisions/pricing.py
+runtime/decisions/tasks.py
+skills/hotel-ota/s03-message-hub/references/rules.md
+skills/hotel-ota/s04-market-context/references/rules.md
+tests/harness/scenarios/s4_market_mcp.json
+tests/test_security_and_freshness.py
+
+## Diff patch
+commit a1c3377c96412093bac196efb88d734e382f5b8e
+Author:     TAI-YE <2622027746@qq.com>
+AuthorDate: Tue Jun 9 13:55:58 2026 +0800
+Commit:     TAI-YE <2622027746@qq.com>
+CommitDate: Tue Jun 9 13:55:58 2026 +0800
+
+    support business dataset v1 and strengthen feishu data trust
+---
+ runtime/adapters/database.py                       |  40 +++-
+ runtime/cli.py                                     |   7 +-
+ runtime/decisions/calendar.py                      |  36 ++-
+ runtime/decisions/command_menu.py                  |  26 +--
+ runtime/decisions/deviation.py                     |  14 +-
+ runtime/decisions/pricing.py                       | 121 +++++++---
+ runtime/decisions/tasks.py                         |  64 +++++-
+ .../hotel-ota/s03-message-hub/references/rules.md  |   2 +
+ .../s04-market-context/references/rules.md         |   7 +-
+ tests/harness/scenarios/s4_market_mcp.json         |   3 +-
+ tests/test_security_and_freshness.py               | 255 ++++++++++++++++++++-
+ 11 files changed, 506 insertions(+), 69 deletions(-)
+
+diff --git a/runtime/adapters/database.py b/runtime/adapters/database.py
+index a42d400..188893d 100644
+--- a/runtime/adapters/database.py
++++ b/runtime/adapters/database.py
+@@ -686,6 +686,7 @@ def _query_mysql_business_price_snapshot(conn, args: argparse.Namespace, profile
+         "hotel_name",
+         "business_date",
+         "room_type_id",
++        "room_type_name",
+         "channel",
+         "current_price",
+         "price_floor",
+@@ -711,11 +712,12 @@ def _query_mysql_business_price_snapshot(conn, args: argparse.Namespace, profile
+     latest_business_date = None
+     for row in rows:
+         room_type = str(row.get("room_type_id") or "unknown")
++        room_type_name = row.get("room_type_name") or room_type
+         latest_business_date = latest_business_date or row.get("business_date")
+         prices.append(
+             {
+                 "room_type_id": room_type,
+-                "room_type_name": room_type,
++                "room_type_name": room_type_name,
+                 "channel": row.get("channel"),
+                 "current_price": row.get("current_price"),
+                 "listed_price": row.get("normal_price") or row.get("current_price"),
+@@ -1132,11 +1134,13 @@ def _query_mysql_reservation_snapshot(conn, args: argparse.Namespace, profile: d
+     select_parts = [count_expr, f"MAX({_safe_identifier(date_col, 'column')}) AS business_date"]
+     if room_type_col:
+         select_parts.append(f"{_safe_identifier(room_type_col, 'column')} AS room_type")
+-    where_parts = [
++    base_where_parts = [
+         f"{_safe_identifier(hotel_col, 'column')} = %s",
+         f"DATE({_safe_identifier(date_col, 'column')}) = %s",
+     ]
+-    params: list[Any] = [hotel_name, _target_date(args)]
++    base_params: list[Any] = [hotel_name, _target_date(args)]
++    where_parts = list(base_where_parts)
++    params: list[Any] = list(base_params)
+     if status_col:
+         aliases = profile.get("reservation_status_active_aliases") or ["\u9884\u8ba2", "\u5df2\u9884\u8ba2", "confirmed", "booked", "reserved"]
+         placeholders = ", ".join(["%s"] * len(aliases))
+@@ -1145,6 +1149,10 @@ def _query_mysql_reservation_snapshot(conn, args: argparse.Namespace, profile: d
+     group_by = f" GROUP BY {_safe_identifier(room_type_col, 'column')}" if room_type_col else ""
+     sql = f"SELECT {', '.join(select_parts)} FROM {safe_table} WHERE {' AND '.join(where_parts)}{group_by}"
+     with conn.cursor() as cursor:
++        raw_count_sql = f"SELECT COUNT(*) AS raw_row_count FROM {safe_table} WHERE {' AND '.join(base_where_parts)}"
++        cursor.execute(raw_count_sql, tuple(base_params))
++        raw_row = cursor.fetchone() or {}
++        raw_row_count = int(raw_row.get("raw_row_count") or 0)
+         cursor.execute(sql, tuple(params))
+         rows = cursor.fetchall()
+     room_type_breakdown = []
+@@ -1156,10 +1164,20 @@ def _query_mysql_reservation_snapshot(conn, args: argparse.Namespace, profile: d
+         data_date = str(row.get("business_date") or data_date)[:10]
+         if room_type_col:
+             room_type_breakdown.append({"room_type": row.get("room_type"), "new_arrival_rooms": count})
++    aliases = profile.get("reservation_status_active_aliases") or ["\u9884\u8ba2", "\u5df2\u9884\u8ba2", "confirmed", "booked", "reserved"]
++    source_status = "ok"
++    if raw_row_count == 0:
++        source_status = "no_rows"
++    elif total == 0:
++        source_status = "status_filtered_zero"
+     payload = {
+         "new_arrival_rooms": total,
+         "room_type_breakdown": room_type_breakdown,
+         "source_table": table,
++        "source_status": source_status,
++        "raw_row_count": raw_row_count,
++        "filtered_room_count": total,
++        "status_filter_aliases": aliases,
+         **freshness_metadata(data_date),
+     }
+     _append_freshness_risk(payload)
+@@ -1199,6 +1217,8 @@ def _query_mysql_stayover_snapshot(conn, args: argparse.Namespace, profile: dict
+         if checkin_col:
+             where_parts.append(f"DATE({_safe_identifier(checkin_col, 'column')}) <= %s")
+             params.append(target_date)
++    base_where_parts = list(where_parts)
++    base_params = list(params)
+     if status_col:
+         aliases = profile.get("stayover_status_active_aliases") or ["\u5728\u4f4f", "\u7eed\u4f4f", "\u5df2\u7eed\u4f4f", "active", "staying", "stayover"]
+         placeholders = ", ".join(["%s"] * len(aliases))
+@@ -1207,6 +1227,10 @@ def _query_mysql_stayover_snapshot(conn, args: argparse.Namespace, profile: dict
+     group_by = f" GROUP BY {_safe_identifier(room_type_col, 'column')}" if room_type_col else ""
+     sql = f"SELECT {', '.join(select_parts)} FROM {safe_table} WHERE {' AND '.join(where_parts)}{group_by}"
+     with conn.cursor() as cursor:
++        raw_count_sql = f"SELECT COUNT(*) AS raw_row_count FROM {safe_table} WHERE {' AND '.join(base_where_parts)}"
++        cursor.execute(raw_count_sql, tuple(base_params))
++        raw_row = cursor.fetchone() or {}
++        raw_row_count = int(raw_row.get("raw_row_count") or 0)
+         cursor.execute(sql, tuple(params))
+         rows = cursor.fetchall()
+     room_type_breakdown = []
+@@ -1218,10 +1242,20 @@ def _query_mysql_stayover_snapshot(conn, args: argparse.Namespace, profile: dict
+         data_date = str(row.get("business_date") or data_date)[:10]
+         if room_type_col:
+             room_type_breakdown.append({"room_type": row.get("room_type"), "stayover_rooms": count})
++    aliases = profile.get("stayover_status_active_aliases") or ["\u5728\u4f4f", "\u7eed\u4f4f", "\u5df2\u7eed\u4f4f", "active", "staying", "stayover"]
++    source_status = "ok"
++    if raw_row_count == 0:
++        source_status = "no_rows"
++    elif total == 0:
++        source_status = "status_filtered_zero"
+     payload = {
+         "stayover_rooms": total,
+         "room_type_breakdown": room_type_breakdown,
+         "source_table": table,
++        "source_status": source_status,
++        "raw_row_count": raw_row_count,
++        "filtered_room_count": total,
++        "status_filter_aliases": aliases,
+         **freshness_metadata(data_date),
+     }
+     _append_freshness_risk(payload)
+diff --git a/runtime/cli.py b/runtime/cli.py
+index dc11e55..56414a5 100644
+--- a/runtime/cli.py
++++ b/runtime/cli.py
+@@ -364,7 +364,11 @@ def build_parser() -> argparse.ArgumentParser:
+     p = sub.add_parser("market-context")
+     p.add_argument("--hotel-id", required=True)
+     p.add_argument("--date")
+-    p.add_argument("--weather-provider", default="weather_mcp", choices=["weather_mcp", "wttr_mcp", "amap_api", "qweather_api", "manual", "sample"])
++    p.add_argument(
++        "--weather-provider",
++        default="weather_mcp",
++        choices=["weather_mcp", "wttr_http", "weather_fixture", "amap_api", "qweather_api", "manual_weather", "manual", "sample", "wttr_mcp"],
++    )
+     p.add_argument("--weather-fixture")
+     p.add_argument("--operating-fixture")
+     p.add_argument("--progress-fixture")
+@@ -391,6 +395,7 @@ def build_parser() -> argparse.ArgumentParser:
+ 
+     p = sub.add_parser("frontdesk-tasks")
+     p.add_argument("--hotel-id", required=True)
++    p.add_argument("--date")
+     p.set_defaults(func=frontdesk_tasks)
+ 
+     p = sub.add_parser("customer-analysis")
+diff --git a/runtime/decisions/calendar.py b/runtime/decisions/calendar.py
+index c140f37..b98ae83 100644
+--- a/runtime/decisions/calendar.py
++++ b/runtime/decisions/calendar.py
+@@ -316,12 +316,35 @@ def _load_json_file(path: str | None) -> dict[str, Any] | None:
+         return json.load(handle)
+ 
+ 
++def _canonical_weather_provider(provider: str) -> str:
++    aliases = {
++        "wttr_mcp": "wttr_http",
++        "sample": "weather_fixture",
++        "manual": "manual_weather",
++    }
++    return aliases.get(provider or "weather_mcp", provider or "weather_mcp")
++
++
++def _weather_source_quality(provider: str) -> str:
++    if provider == "weather_mcp":
++        return "confirmed"
++    if provider in {"wttr_http", "amap_api", "qweather_api"}:
++        return "secondary"
++    if provider == "weather_fixture":
++        return "fixture"
++    if provider == "manual_weather":
++        return "manual"
++    return "secondary"
++
++
+ def normalize_weather(payload: dict[str, Any] | None, provider: str = "weather_mcp") -> dict[str, Any]:
++    provider = _canonical_weather_provider(provider)
+     if not payload:
++        summary = "天气 MCP 未配置或未返回。" if provider == "weather_mcp" else f"{provider} 天气源未配置或未返回。"
+         return {
+             "status": "unavailable",
+             "source": provider,
+-            "weather_summary": "天气 MCP 未配置或未返回。",
++            "weather_summary": summary,
+             "weather_risk_level": "unknown",
+             "source_quality": "unavailable",
+             "field_quality": "missing",
+@@ -330,7 +353,7 @@ def normalize_weather(payload: dict[str, Any] | None, provider: str = "weather_m
+         return {
+             "status": "unavailable",
+             "source": provider,
+-            "weather_summary": payload.get("message") or "天气 MCP 超时或不可用。",
++            "weather_summary": payload.get("message") or f"{provider} 天气源超时或不可用。",
+             "weather_risk_level": "unknown",
+             "source_quality": "unavailable",
+             "field_quality": "missing",
+@@ -362,7 +385,7 @@ def normalize_weather(payload: dict[str, Any] | None, provider: str = "weather_m
+         "source": provider,
+         "weather_summary": weather_text,
+         "weather_risk_level": risk,
+-        "source_quality": "secondary" if provider in {"weather_mcp", "wttr_mcp"} else "confirmed",
++        "source_quality": _weather_source_quality(provider),
+         "field_quality": "confirmed" if desc else "inferred",
+         "data_snapshot_time": now_local(),
+     }
+@@ -399,10 +422,13 @@ def _fresh_progress_context(payload: dict[str, Any] | None) -> tuple[bool, dict[
+ def market_context(args: argparse.Namespace) -> None:
+     business_date = args.date or today()
+     calendar_context = get_calendar_day(args.db, business_date)
+-    weather_context = normalize_weather(_load_json_file(args.weather_fixture), args.weather_provider)
++    weather_provider = args.weather_provider
++    if args.weather_fixture and weather_provider == "weather_mcp":
++        weather_provider = "weather_fixture"
++    weather_context = normalize_weather(_load_json_file(args.weather_fixture), weather_provider)
+     operating_payload = _load_json_file(args.operating_fixture)
+     if operating_payload is None and database_source_enabled():
+-        db_result = database_template_result("operating_snapshot", args.hotel_id)
++        db_result = database_template_result("operating_snapshot", args.hotel_id, date=business_date)
+         operating_payload = (db_result.get("payload") or {}) if db_result.get("status") == "ok" else None
+     operating_fresh, operating_context = _fresh_operating_context(operating_payload)
+     progress_fresh, progress_context = _fresh_progress_context(_load_json_file(args.progress_fixture))
+diff --git a/runtime/decisions/command_menu.py b/runtime/decisions/command_menu.py
+index 16b5ba5..b683754 100644
+--- a/runtime/decisions/command_menu.py
++++ b/runtime/decisions/command_menu.py
+@@ -124,6 +124,8 @@ def _safe_summary(result: dict[str, Any]) -> dict[str, Any]:
+                 "progress_checkpoint": result.get("progress_checkpoint"),
+                 "checkpoint_target_orders": result.get("checkpoint_target_orders"),
+                 "checkpoint_completion_rate": result.get("checkpoint_completion_rate"),
++                "retrospective_completion_rate": result.get("retrospective_completion_rate"),
++                "historical_progress_mode": result.get("historical_progress_mode"),
+                 "traffic_problem": result.get("traffic_problem"),
+                 "conversion_problem": result.get("conversion_problem"),
+                 "downstream_allowed": result.get("downstream_allowed"),
+@@ -196,17 +198,6 @@ def _safe_summary(result: dict[str, Any]) -> dict[str, Any]:
+     return {key: value for key, value in summary.items() if value is not None}
+ 
+ 
+-def _render_final_reply(command: MenuCommand, result_summary: dict[str, Any]) -> str:
+-    return (
+-        f"结论：已执行 {command.title}。\n"
+-        f"数据：状态 {result_summary.get('status', 'unknown')}，新鲜度 {result_summary.get('freshness_status', 'unknown')}。\n"
+-        "证据：仅展示脱敏摘要，完整 runtime JSON 不在飞书外发。\n"
+-        "风险：写动作仍只允许 dry-run 或审批链路。\n"
+-        "建议：如需真实执行，请继续发起审批。\n"
+-        f"审批：{result_summary.get('approval_status') or ('需要审批' if command.approval_required else '无需审批')}"
+-    )
+-
+-
+ def _parse_price_token(value: str | float | int | None) -> float | None:
+     if value in (None, ""):
+         return None
+@@ -223,6 +214,8 @@ def _render_final_reply(command: MenuCommand, result_summary: dict[str, Any]) ->
+     status = result_summary.get("status", "unknown")
+     if status == "ok":
+         conclusion = f"已完成 {command.title} 查询/预览。"
++    elif status == "historical_only":
++        conclusion = f"{command.title} 只完成历史复盘，不能作为今日正式结论。"
+     elif status == "data_gap":
+         conclusion = f"{command.title} 数据不足，未生成正式建议。"
+     elif status == "blocked":
+@@ -231,13 +224,14 @@ def _render_final_reply(command: MenuCommand, result_summary: dict[str, Any]) ->
+         conclusion = f"{command.title} 执行失败。"
+     else:
+         conclusion = f"{command.title} 返回状态 {status}。"
+-    approval = result_summary.get("approval_status") or ("需要审批" if command.approval_required else "无需审批")
++    approval = result_summary.get("approval_status") or ("需要审批" if command.approval_required and status == "ok" else "不可审批" if status in {"data_gap", "historical_only", "blocked", "error"} else "无需审批")
++    suggestion = "如需真实执行，请继续发起审批。" if command.approval_required and status == "ok" else "按风险提示补齐数据或仅做复盘，不要直接执行。"
+     return (
+         f"结论：{conclusion}\n"
+         f"数据：状态 {status}，新鲜度 {result_summary.get('freshness_status', 'unknown')}。\n"
+         "证据：只展示脱敏摘要，完整 runtime JSON 不在飞书外发。\n"
+         "风险：写动作仍只允许 dry-run 或审批链路。\n"
+-        "建议：如需真实执行，请继续发起审批。\n"
++        f"建议：{suggestion}\n"
+         f"审批：{approval}"
+     )
+ 
+@@ -333,12 +327,12 @@ def _handle_customer(base: argparse.Namespace, tokens: list[str]) -> dict[str, A
+ 
+ 
+ def _handle_frontdesk(base: argparse.Namespace, tokens: list[str]) -> dict[str, Any]:
+-    return _capture_json(frontdesk_tasks, argparse.Namespace(hotel_id=base.hotel_id))
++    return _capture_json(frontdesk_tasks, argparse.Namespace(hotel_id=base.hotel_id, date=tokens[0] if tokens else None))
+ 
+ 
+ COMMANDS: tuple[MenuCommand, ...] = (
+     MenuCommand("1", "经营快报", "view_diagnosis", "low", True, False, False, "1", _handle_snapshot),
+-    MenuCommand("2", "进度诊断", "view_diagnosis", "low", True, False, False, "2", _handle_deviation),
++    MenuCommand("2", "进度诊断", "view_diagnosis", "low", True, False, False, "2 [日期]", _handle_deviation),
+     MenuCommand("3", "销售基准线", "view_diagnosis", "low", True, False, False, "3 [日期]", _handle_baseline),
+     MenuCommand("4", "业务日历/行情日期", "view_diagnosis", "low", True, False, False, "4 [日期]", _handle_calendar),
+     MenuCommand("5", "OTA 健康诊断", "view_diagnosis", "low", True, False, False, "5", _handle_ota_health),
+@@ -346,7 +340,7 @@ COMMANDS: tuple[MenuCommand, ...] = (
+     MenuCommand("7", "调价建议", "run_recommendation", "medium", True, False, False, "7 [渠道] [开始日期] [结束日期] [折扣系数] [PMS参考价]", _handle_revenue),
+     MenuCommand("8", "调价 dry-run", "create_dry_run", "high", False, True, False, "8 房型 渠道 后台价 开始日期 [结束日期] [折扣系数] [PMS参考价]", _handle_execute_price, min_args=4),
+     MenuCommand("9", "客户/订单聚合分析", "view_diagnosis", "medium", True, False, False, "9", _handle_customer),
+-    MenuCommand("10", "前台任务", "view_frontdesk_task", "low", True, False, False, "10", _handle_frontdesk),
++    MenuCommand("10", "前台任务", "view_frontdesk_task", "low", True, False, False, "10 [日期]", _handle_frontdesk),
+ )
+ COMMAND_BY_ID = {command.command_id: command for command in COMMANDS}
+ 
+diff --git a/runtime/decisions/deviation.py b/runtime/decisions/deviation.py
+index 4c743e7..a559b69 100644
+--- a/runtime/decisions/deviation.py
++++ b/runtime/decisions/deviation.py
+@@ -212,6 +212,8 @@ def deviation(args: argparse.Namespace) -> None:
+     daily_completion = float(actual_orders) / target_orders
+     checkpoint_completion = float(actual_orders) / checkpoint_target_orders
+     context = _traffic_conversion_context({**payload, **operating_payload})
++    retrospective_completion = None
++    historical_progress_mode = False
+ 
+     if checkpoint_completion >= 0.9:
+         direction = "ahead"
+@@ -234,6 +236,9 @@ def deviation(args: argparse.Namespace) -> None:
+             downstream = "S14"
+ 
+     if not actual_trusted:
++        if actual_basis_date == target_date and actual_orders is not None and target_orders > 0:
++            retrospective_completion = float(actual_orders) / target_orders
++            historical_progress_mode = True
+         daily_completion = None
+         checkpoint_completion = None
+         direction = "data_gap"
+@@ -242,7 +247,12 @@ def deviation(args: argparse.Namespace) -> None:
+             "conversion_problem": None,
+             "problem_basis": "actual_orders_not_today_realtime",
+         }
+-        recommendation = "Actual orders are not same-date fresh realtime data; completion, traffic/conversion judgment, and S5 handoff are blocked."
++        recommendation = (
++            "该日期只能做历史日终复盘，不能当作实时节点进度；"
++            "流量/转化判断和 S5 调价交接均已阻断。"
++            if historical_progress_mode
++            else "实际订单不是同日期 fresh 实时口径；完成率、流量/转化判断和 S5 交接均已阻断。"
++        )
+         downstream = "S14"
+ 
+     metrics_freshness = _freshness_status(daily)
+@@ -273,6 +283,8 @@ def deviation(args: argparse.Namespace) -> None:
+             "direction": direction,
+             "completion_rate": completion_rate,
+             "daily_completion_rate": daily_completion_rate,
++            "retrospective_completion_rate": round(retrospective_completion, 4) if retrospective_completion is not None else None,
++            "historical_progress_mode": historical_progress_mode,
+             "actual_orders": actual_orders,
+             "target_orders": target_orders,
+             "progress_checkpoint": progress_checkpoint,
+diff --git a/runtime/decisions/pricing.py b/runtime/decisions/pricing.py
+index 9b67fdd..219c500 100644
+--- a/runtime/decisions/pricing.py
++++ b/runtime/decisions/pricing.py
+@@ -186,8 +186,24 @@ def expected_occupancy_result(args: argparse.Namespace) -> dict:
+         "reservation_snapshot": reservation_payload.get("freshness_status"),
+         "stayover_snapshot": stayover_payload.get("freshness_status"),
+     }
+-    if any(value != "fresh" for value in freshness.values()):
+-        missing.extend(label for label, value in freshness.items() if value != "fresh")
++    source_diagnostics = {
++        "reservation_snapshot": {
++            "source_status": reservation_payload.get("source_status"),
++            "raw_row_count": reservation_payload.get("raw_row_count"),
++            "filtered_room_count": reservation_payload.get("filtered_room_count"),
++            "status_filter_aliases": reservation_payload.get("status_filter_aliases"),
++        },
++        "stayover_snapshot": {
++            "source_status": stayover_payload.get("source_status"),
++            "raw_row_count": stayover_payload.get("raw_row_count"),
++            "filtered_room_count": stayover_payload.get("filtered_room_count"),
++            "status_filter_aliases": stayover_payload.get("status_filter_aliases"),
++        },
++    }
++    source_issues = []
++    for label, diagnostic in source_diagnostics.items():
++        if diagnostic.get("source_status") in {"no_rows", "status_filtered_zero"}:
++            source_issues.append(f"{label}:{diagnostic['source_status']}")
+ 
+     total_rooms = int(_to_float(operating_payload.get("total_rooms"), 0))
+     stayover_rooms = int(_to_float(stayover_payload.get("stayover_rooms"), 0))
+@@ -200,15 +216,16 @@ def expected_occupancy_result(args: argparse.Namespace) -> dict:
+     )
+     if total_rooms <= 0:
+         missing.append("total_rooms")
+-    if missing:
++    if missing or source_issues:
+         return {
+             "status": "data_gap",
+             "hotel_id": args.hotel_id,
+             "data_business_date": business_date,
+-            "expected_occupancy_status": "missing_required_sources",
++            "expected_occupancy_status": "source_diagnostic_failed" if source_issues else "missing_required_sources",
+             "pricing_blocked_reason": "expected_occupancy_requires_reservation_and_stayover_data",
+-            "missing_sources": sorted(set(missing)),
++            "missing_sources": sorted(set(missing + source_issues)),
+             "field_freshness": freshness,
++            "source_diagnostics": source_diagnostics,
+             "database_evidence": {
+                 "operating_snapshot": operating,
+                 "reservation_snapshot": reservations,
+@@ -221,15 +238,17 @@ def expected_occupancy_result(args: argparse.Namespace) -> dict:
+     sellable_rooms = max(total_rooms - unavailable_rooms, 1)
+     expected_sold = max(stayover_rooms + new_arrival_rooms, 0)
+     occupancy = round(min(expected_sold / sellable_rooms, 1.0), 4)
++    all_fresh = all(value == "fresh" for value in freshness.values())
++    status = "ok" if all_fresh else "historical_only"
+     return {
+-        "status": "ok",
++        "status": status,
+         "hotel_id": args.hotel_id,
+         "data_business_date": business_date,
+         "data_snapshot_time": operating_payload.get("data_snapshot_time"),
+-        "freshness_status": "fresh",
+-        "business_status": "current",
+-        "today_label_allowed": True,
+-        "expected_occupancy_status": "confirmed",
++        "freshness_status": "fresh" if all_fresh else "stale",
++        "business_status": "current" if all_fresh else "demo_or_historical",
++        "today_label_allowed": bool(all_fresh),
++        "expected_occupancy_status": "confirmed" if all_fresh else "historical_simulation",
+         "stayover_rooms": stayover_rooms,
+         "new_arrival_rooms": new_arrival_rooms,
+         "unavailable_rooms_tonight": unavailable_rooms,
+@@ -241,6 +260,7 @@ def expected_occupancy_result(args: argparse.Namespace) -> dict:
+             f"可售房 {sellable_rooms} 间，总房量 {total_rooms} 间，不可售 {unavailable_rooms} 间。"
+         ),
+         "field_freshness": freshness,
++        "source_diagnostics": source_diagnostics,
+     }
+ 
+ 
+@@ -292,8 +312,9 @@ def baseline_price_result(args: argparse.Namespace) -> dict:
+                 }
+             )
+         if rows:
++            fresh_prices = prices_payload.get("freshness_status") == "fresh"
+             return {
+-                "status": "ok" if prices_payload.get("freshness_status") == "fresh" else "data_gap",
++                "status": "ok" if fresh_prices else "historical_only",
+                 "hotel_id": args.hotel_id,
+                 "business_date": business_date,
+                 "data_business_date": prices_payload.get("data_business_date") or business_date,
+@@ -303,7 +324,7 @@ def baseline_price_result(args: argparse.Namespace) -> dict:
+                 "baseline_price_by_room_type": rows,
+                 "date_type_factor": factor,
+                 "date_type_factor_label": factor_label,
+-                "pricing_blocked_reason": None if prices_payload.get("freshness_status") == "fresh" else "price_data_not_fresh",
++                "pricing_blocked_reason": None if fresh_prices else "price_data_not_fresh",
+                 "database_evidence": {"price_snapshot": prices_result},
+             }
+     if orders_result.get("status") != "ok" or prices_result.get("status") != "ok":
+@@ -398,6 +419,31 @@ def baseline_price(args: argparse.Namespace) -> None:
+     emit(baseline_price_result(args))
+ 
+ 
++def _room_price_bounds_from_price_data(args: argparse.Namespace) -> dict | None:
++    if not database_source_enabled():
++        return None
++    result = database_template_result("price_snapshot", args.hotel_id, date=getattr(args, "begin_date", None))
++    if result.get("status") != "ok":
++        return None
++    wanted = str(args.room_type_id).strip()
++    wanted_lower = wanted.lower()
++    for item in (result.get("payload") or {}).get("price_snapshots") or []:
++        candidates = {
++            str(item.get("room_type_id") or "").strip(),
++            str(item.get("room_type_name") or "").strip(),
++        }
++        if wanted in candidates or wanted_lower in {candidate.lower() for candidate in candidates if candidate}:
++            return {
++                "source": "business_dataset_v1.price_data",
++                "floor_price": item.get("price_floor"),
++                "ceiling_price": item.get("price_ceiling"),
++                "matched_room_type_id": item.get("room_type_id"),
++                "matched_room_type_name": item.get("room_type_name"),
++                "price_freshness_status": (result.get("payload") or {}).get("freshness_status"),
++            }
++    return None
++
++
+ def _room_price_bounds(db_path: str, hotel_id: str, room_type_id: str) -> dict:
+     try:
+         with closing(connect(db_path)) as conn:
+@@ -427,7 +473,10 @@ def revenue_decision(args: argparse.Namespace) -> None:
+     expected_occupancy = expected_occupancy_result(args)
+     baseline_prices = baseline_price_result(args)
+     price_candidate = None
++    baseline_rows = baseline_prices.get("baseline_price_by_room_type") or []
++    data_is_usable = expected_occupancy.get("status") in {"ok", "historical_only"} and baseline_rows
+     data_is_fresh = expected_occupancy.get("status") == "ok" and baseline_prices.get("status") == "ok"
++    historical_simulation = bool(data_is_usable and not data_is_fresh)
+     if database_source_enabled():
+         operating = database_template_result("operating_snapshot", args.hotel_id, date=business_date)
+         prices = database_template_result("price_snapshot", args.hotel_id, date=business_date)
+@@ -441,8 +490,7 @@ def revenue_decision(args: argparse.Namespace) -> None:
+             snapshot.update(operating.get("payload") or {})
+         price_candidate = _select_price_candidate(prices) if _result_is_fresh(operating) and _result_is_fresh(prices) else None
+ 
+-    baseline_rows = baseline_prices.get("baseline_price_by_room_type") or []
+-    if data_is_fresh and baseline_rows:
++    if data_is_usable and baseline_rows:
+         selected = max(baseline_rows, key=lambda item: _to_float(item.get("final_baseline_price")))
+         old_price = _to_float((price_candidate or {}).get("current_price"), _to_float(selected.get("final_baseline_price"), 149))
+         ceiling = _to_float(selected.get("price_ceiling"), old_price * 1.15) if selected.get("price_ceiling") is not None else old_price * 1.15
+@@ -452,7 +500,8 @@ def revenue_decision(args: argparse.Namespace) -> None:
+         new_price = round(_clamp(_round_to_five(_to_float(selected.get("final_baseline_price")) * adjustment), floor, ceiling))
+         room_type_id = selected.get("room_type_id") or "KING"
+         room_type_name = selected.get("room_type_name") or room_type_id
+-        reason = f"{expected_occupancy.get('occupancy_basis')} 今晚预期出租率 {occupancy:.2%}，基准价 {selected.get('final_baseline_price')}，生成 OTA 后台门市价 dry-run 建议。"
++        mode_text = "生成 OTA 后台门市价 dry-run 建议" if data_is_fresh else "仅生成历史复盘模拟，不允许正式审批或 live 执行"
++        reason = f"{expected_occupancy.get('occupancy_basis')} 今晚预期出租率 {occupancy:.2%}，基准价 {selected.get('final_baseline_price')}，{mode_text}。"
+     else:
+         old_price = None
+         new_price = None
+@@ -462,18 +511,18 @@ def revenue_decision(args: argparse.Namespace) -> None:
+         room_type_name = "KING"
+         reason = "缺少今晚预期出租率或房型基准价，不能生成正式调价建议。"
+ 
+-    guard = price_guard(old_price=old_price, new_price=new_price, floor_price=floor, ceiling_price=ceiling) if data_is_fresh else {"passed": False, "violations": ["pricing_input_data_gap"]}
++    guard = price_guard(old_price=old_price, new_price=new_price, floor_price=floor, ceiling_price=ceiling) if data_is_usable else {"passed": False, "violations": ["pricing_input_data_gap"]}
+     price_model = (
+         _build_ota_price_model(
+             new_price,
+             getattr(args, "activity_discount_factors", None),
+             getattr(args, "pms_price", None),
+         )
+-        if data_is_fresh
++        if data_is_usable
+         else None
+     )
+     action = {
+-        "type": "price_update" if data_is_fresh else "pricing_data_gap",
++        "type": "price_update" if data_is_fresh else ("pricing_historical_simulation" if historical_simulation else "pricing_data_gap"),
+         "room_type_id": room_type_id,
+         "room_type_name": room_type_name,
+         "channel": args.channel,
+@@ -496,28 +545,36 @@ def revenue_decision(args: argparse.Namespace) -> None:
+         "baseline_price_method": baseline_prices.get("baseline_price_method"),
+     }
+     approval_required = bool(data_is_fresh)
+-    if not data_is_fresh:
++    if historical_simulation:
++        action["blocked_reason"] = "historical_data_simulation_only"
++        action["simulation_only"] = True
++    elif not data_is_fresh:
+         action["blocked_reason"] = expected_occupancy.get("pricing_blocked_reason") or baseline_prices.get("pricing_blocked_reason") or "pricing_input_data_gap"
++    result_status = "ok" if data_is_fresh else ("historical_only" if historical_simulation else "data_gap")
+ 
+     emit(
+         {
+-            "status": "ok" if data_is_fresh else "data_gap",
++            "status": result_status,
+             "decision": {
+                 **standard_envelope(
+-                    status="ok" if data_is_fresh else "data_gap",
++                    status=result_status,
+                     skill_id="S5",
+                     summary=(
+                         "按今晚预期出租率和房型基准价生成收益建议，默认只做 dry-run，不直接写入渠道。"
+                         if data_is_fresh
+-                        else "缺少今晚预期出租率或房型基准价，只能返回数据缺口，不得生成正式调价建议。"
++                        else (
++                            "使用历史同日期数据生成调价复盘模拟；不允许创建正式审批或 live 执行。"
++                            if historical_simulation
++                            else "缺少今晚预期出租率或房型基准价，只能返回数据缺口，不得生成正式调价建议。"
++                        )
+                     ),
+                     evidence={
+                         **snapshot,
+                         "selected_price_candidate": price_candidate,
+                         "database_evidence": database_evidence,
+-                        "data_business_date": expected_occupancy.get("data_business_date") if data_is_fresh else None,
+-                        "data_snapshot_time": expected_occupancy.get("data_snapshot_time") if data_is_fresh else None,
+-                        "freshness_status": "fresh" if data_is_fresh else "missing_date",
++                        "data_business_date": expected_occupancy.get("data_business_date") if data_is_usable else None,
++                        "data_snapshot_time": expected_occupancy.get("data_snapshot_time") if data_is_usable else None,
++                        "freshness_status": "fresh" if data_is_fresh else (expected_occupancy.get("freshness_status") if historical_simulation else "missing_date"),
+                         "business_status": "current" if data_is_fresh else "demo_or_historical",
+                         "today_label_allowed": bool(data_is_fresh),
+                         "strategy_mode": "expected_tonight_occupancy",
+@@ -529,7 +586,11 @@ def revenue_decision(args: argparse.Namespace) -> None:
+                     recommendations=(
+                         ["先预览 OTA 后台门市价，不直接写入渠道。", "低转化房型先修内容、活动和价格一致性，不急于降价。"]
+                         if data_is_fresh
+-                        else ["请先接入今日预订明细、续住/离店明细和价格历史。", "实时在住率、昨日出租率或 sample 数据不得作为调价依据。"]
++                        else (
++                            ["该结果只能用于复盘或演示 dry-run。", "要做今日正式调价，必须接入今日 fresh 预订、续住和价格数据。"]
++                            if historical_simulation
++                            else ["请先接入今日预订明细、续住/离店明细和价格历史。", "实时在住率、昨日出租率或 sample 数据不得作为调价依据。"]
++                        )
+                     ),
+                     actions=[action],
+                     risk_level="medium",
+@@ -631,8 +692,11 @@ def execute_price(args: argparse.Namespace) -> None:
+     guard_source = "cli_args"
+     floor_price = getattr(args, "floor_price", None)
+     ceiling_price = getattr(args, "ceiling_price", None)
++    resolved_room_type_id = args.room_type_id
+     if floor_price is None or ceiling_price is None:
+-        bounds = _room_price_bounds(args.db, args.hotel_id, args.room_type_id)
++        bounds = _room_price_bounds_from_price_data(args) or _room_price_bounds(args.db, args.hotel_id, args.room_type_id)
++        if bounds.get("matched_room_type_id"):
++            resolved_room_type_id = bounds["matched_room_type_id"]
+         if floor_price is None and bounds.get("floor_price") is not None:
+             floor_price = float(bounds["floor_price"])
+             guard_source = bounds["source"]
+@@ -690,7 +754,7 @@ def execute_price(args: argparse.Namespace) -> None:
+     biz = {
+         "Channel": args.channel,
+         "OrgId": os.environ.get("BEYONDH_ORG_ID", ""),
+-        "RoomTypeId": args.room_type_id,
++        "RoomTypeId": resolved_room_type_id,
+         "NormalPrice": args.normal_price,
+         "BeginDate": args.begin_date,
+         "EndDate": args.end_date,
+@@ -721,6 +785,7 @@ def execute_price(args: argparse.Namespace) -> None:
+                 "request": summary,
+                 "price_model": price_model,
+                 "guard": guard,
++                "resolved_room_type_id": resolved_room_type_id,
+                 "approval_status": "dry_run_only",
+                 "live_call": False,
+                 "message": "当前仅预览 OTA 后台门市价写入请求；PMS 价仅作参考，不作为执行目标。",
+diff --git a/runtime/decisions/tasks.py b/runtime/decisions/tasks.py
+index 52a2aec..31da56e 100644
+--- a/runtime/decisions/tasks.py
++++ b/runtime/decisions/tasks.py
+@@ -2,22 +2,70 @@ from __future__ import annotations
+ 
+ import argparse
+ 
+-from runtime.common import emit
++from runtime.adapters.database import database_source_enabled, database_template_result
++from runtime.common import emit, today
+ from runtime.contracts import standard_envelope
+ 
+ 
+ def frontdesk_tasks(args: argparse.Namespace) -> None:
+-    tasks = [
+-        {"task_type": "inventory_report", "shift": "每2小时", "owner": "前台", "content": "通报库存、预抵、预离和外网可售状态"},
+-        {"task_type": "conversion_check", "shift": "晚高峰前", "owner": "运营", "content": "检查曝光、浏览、支付转化和价格一致性"},
+-        {"task_type": "review_followup", "shift": "每日", "owner": "店长", "content": "跟进差评和好评任务完成量"},
+-    ]
++    business_date = getattr(args, "date", None) or today()
++    tasks = []
++    evidence = {"task_mode": "generic_template", "task_count": 0}
++    if database_source_enabled():
++        reservation = database_template_result("reservation_snapshot", args.hotel_id, date=business_date)
++        stayover = database_template_result("stayover_snapshot", args.hotel_id, date=business_date)
++        operating = database_template_result("operating_snapshot", args.hotel_id, date=business_date)
++        reservation_payload = reservation.get("payload") or {}
++        stayover_payload = stayover.get("payload") or {}
++        operating_payload = operating.get("payload") or {}
++        if reservation.get("status") == "ok" and reservation_payload.get("source_status") == "ok":
++            tasks.append(
++                {
++                    "task_type": "prearrival_summary",
++                    "shift": "到店高峰前",
++                    "owner": "前台",
++                    "content": f"核对今日预抵 {reservation_payload.get('new_arrival_rooms', 0)} 间，只输出聚合数量，不外发行级订单。",
++                }
++            )
++        if stayover.get("status") == "ok" and stayover_payload.get("source_status") == "ok":
++            tasks.append(
++                {
++                    "task_type": "stayover_summary",
++                    "shift": "退房检查前",
++                    "owner": "前台",
++                    "content": f"核对今日续住/在住 {stayover_payload.get('stayover_rooms', 0)} 间，重点确认离店时间变更。",
++                }
++            )
++        if operating.get("status") == "ok":
++            tasks.append(
++                {
++                    "task_type": "availability_summary",
++                    "shift": "每2小时",
++                    "owner": "前台",
++                    "content": f"复核可售 {operating_payload.get('remaining_rooms')} 间、已售 {operating_payload.get('sold_rooms')} 间和外网可售一致性。",
++                }
++            )
++        evidence = {
++            "task_mode": "database_aggregate" if tasks else "generic_template",
++            "reservation_source_status": reservation_payload.get("source_status"),
++            "stayover_source_status": stayover_payload.get("source_status"),
++            "operating_status": operating.get("status"),
++            "row_level_details_included": False,
++        }
++    if not tasks:
++        tasks = [
++            {"task_type": "inventory_report", "shift": "每2小时", "owner": "前台", "content": "通报库存、预抵、预离和外网可售状态"},
++            {"task_type": "conversion_check", "shift": "晚高峰前", "owner": "运营", "content": "检查曝光、浏览、支付转化和价格一致性"},
++            {"task_type": "review_followup", "shift": "每日", "owner": "店长", "content": "跟进差评和好评任务完成量"},
++        ]
++        evidence["task_mode"] = "generic_template"
++    evidence["task_count"] = len(tasks)
+     emit(
+         standard_envelope(
+             status="ok",
+             skill_id="S3/S11",
+-            summary="已生成前台与运营执行清单，重点是每2小时可追责上报。",
+-            evidence={"task_count": len(tasks)},
++            summary="已生成前台与运营执行清单；有数据库聚合时优先使用聚合任务，否则返回通用提醒。",
++            evidence=evidence,
+             recommendations=["任务生成后必须跟踪完成状态、操作人和操作时间。"],
+             actions=tasks,
+             risk_level="low",
+diff --git a/skills/hotel-ota/s03-message-hub/references/rules.md b/skills/hotel-ota/s03-message-hub/references/rules.md
+index 6ccabd4..de8985b 100644
+--- a/skills/hotel-ota/s03-message-hub/references/rules.md
++++ b/skills/hotel-ota/s03-message-hub/references/rules.md
+@@ -18,6 +18,7 @@
+ 7. 命中模型/插件安装、审批绕过、订单明细外发、模型 provider 异常时，分别使用 `ops-refusal`、`approval-bypass-refusal`、`raw-order-refusal`、`model-provider-error`。
+ 8. 普通业务回复按 `结论/数据/证据/风险/建议/审批` 6 段式输出，复杂结果先摘要，详细内容进入受控报表或 artifact。
+ 9. 各 skill 的 runtime JSON 只能作为输入证据，不得在飞书生产回复中原样粘贴。
++10. 一条消息同时包含多个敏感意图时，必须逐项说明处理结果；不能只拒绝其中一个风险点后忽略其他风险点。
+ 
+ ## 角色权限判断
+ - `admin` 接收角色、安全、异常和所有高风险审批消息。
+@@ -44,6 +45,7 @@
+ - 生产飞书禁止发送配置包、env、auth profile、角色表、数据库映射、OpenClaw 主配置、源码 zip、CSV、XLSX、JSON 原始数据和完整 runtime JSON。
+ - 生产飞书禁止展示代码片段、真实 `open_id/chat_id`、DSN、API 请求体、字段映射全量内容或密钥。
+ - 飞书业务 Agent 不创建、修改或删除项目文件，不修改角色表、数据库映射、环境变量或源码。
++- 飞书业务 Agent 不要求用户在聊天里发送 `OrgId`、`ChannelKey`、API Secret、DSN 或 token；只提示通过 SSH/运维流程写入服务器私有环境文件。
+ - 飞书业务 Agent 不下载、安装或部署模型、插件、应用、二进制工具，也不得承诺已经安装。
+ - 飞书业务 Agent 不执行或声称执行 `git stash`、回滚、清理工作区、重启服务或修改服务器文件。
+ - 飞书业务 Agent 不使用 `bypass`、绕过、强制审批等方式处理调价、推广、房量或评论发布；聊天里的手动数据不得作为正式审批数据源。
+diff --git a/skills/hotel-ota/s04-market-context/references/rules.md b/skills/hotel-ota/s04-market-context/references/rules.md
+index 92665ab..81064d3 100644
+--- a/skills/hotel-ota/s04-market-context/references/rules.md
++++ b/skills/hotel-ota/s04-market-context/references/rules.md
+@@ -12,20 +12,21 @@
+ 
+ ## 判断逻辑
+ 1. 先读取业务日历，识别周末、调休上班、法定节假日、节前节后和业务建议。
+-2. 再读取天气 MCP 归一化结果，天气只作为风险和需求修正项。
++2. 再读取天气归一化结果，天气只作为风险和需求修正项。
+ 3. 再叠加活动候选、S7 竞品聚合信号、S2 今日经营和 S16 当前进度。
+ 4. 只有业务日历确认、天气可用、S2/S16 均为今日 fresh 时，才允许给 S5 输出行情增强信号。
+ 5. 只有日历、只有天气或缺少今日经营/进度时，返回 `data_gap` 或保守诊断，不触发正式调价。
+ 
+ ## 可配置参数
+-- 天气 provider 第一版优先 `weather_mcp/wttr_mcp`，API 只作为后备。
++- 天气 provider 必须区分：`weather_mcp` 表示真实 OpenClaw MCP 工具，`wttr_http` 表示直接访问 wttr.in，`weather_fixture` 表示本地样例，`manual_weather` 表示人工录入。
++- 未注册 MCP server 时，不得声称天气 MCP 已接入。
+ - 节假日和调休以 runtime 业务日历为准，不在 skill 内临时解析网页。
+ - 活动和竞品为候选信号，必须带置信度和来源质量。
+ 
+ ## 异常处理
+ - 缺关键字段时先追问或降级为 sample/manual/RPA，不让 skill 失败退出。
+ - 低质量字段只能用于诊断、提示和 dry-run，不得用于真实执行。
+-- MCP 超时、缺字段或返回原文时，由 runtime 转为统一 `weather_context` 后再解释。
++- 天气源超时、缺字段或返回原文时，由 runtime 转为统一 `weather_context` 后再解释。
+ - 调休上班日即使是周六日，也不得按普通周末高需求判断。
+ 
+ ## 安全规则
+diff --git a/tests/harness/scenarios/s4_market_mcp.json b/tests/harness/scenarios/s4_market_mcp.json
+index 74b015b..72aceaa 100644
+--- a/tests/harness/scenarios/s4_market_mcp.json
++++ b/tests/harness/scenarios/s4_market_mcp.json
+@@ -17,7 +17,8 @@
+       "json_path": {
+         "calendar_context.is_adjusted_workday": true,
+         "weather_context.status": "ok",
+-        "weather_context.source_quality": "secondary",
++        "weather_context.source": "weather_fixture",
++        "weather_context.source_quality": "fixture",
+         "downstream_allowed": false,
+         "downstream_blocked_reason": "missing_fresh_operating_progress",
+         "approval_allowed": false
+diff --git a/tests/test_security_and_freshness.py b/tests/test_security_and_freshness.py
+index bd7727a..675b04c 100644
+--- a/tests/test_security_and_freshness.py
++++ b/tests/test_security_and_freshness.py
+@@ -28,7 +28,7 @@ from runtime.decisions.baseline import _progress_checkpoints
+ from runtime.decisions.customer import customer_analysis
+ from runtime.decisions.deviation import _today_order_count, deviation
+ from runtime.decisions.demand import demand_index, snapshot
+-from runtime.decisions.command_menu import _parse_price_token
++from runtime.decisions.command_menu import COMMAND_BY_ID, _parse_price_token
+ from runtime.decisions.ota_health import conversion_diagnosis
+ from runtime.decisions.pricing import _build_ota_price_model, baseline_price_result, expected_occupancy_result, revenue_decision
+ from runtime.safety.approvals import validate_approval_payload
+@@ -229,6 +229,10 @@ class TestCommandMenu(EnvMixin, unittest.TestCase):
+         frontdesk_ids = {item["id"] for item in frontdesk["available_commands"]}
+         self.assertEqual(frontdesk_ids, {"10"})
+ 
++    def test_menu_usage_documents_date_arguments(self) -> None:
++        self.assertEqual(COMMAND_BY_ID["2"].usage, "2 [日期]")
++        self.assertEqual(COMMAND_BY_ID["10"].usage, "10 [日期]")
++
+     def test_guest_menu_is_blocked(self) -> None:
+         with tempfile.TemporaryDirectory() as tmp:
+             db_path = self._init_db(tmp)
+@@ -422,7 +426,7 @@ class TestBusinessCalendarAndMarket(unittest.TestCase):
+         self.assertEqual(day["holiday_group"], "春节")
+         self.assertEqual(day["demand_level"], "high_candidate")
+ 
+-    def test_weather_mcp_fixture_is_secondary_source(self) -> None:
++    def test_wttr_http_weather_is_secondary_source(self) -> None:
+         weather = normalize_weather(
+             {
+                 "current_condition": [
+@@ -433,12 +437,18 @@ class TestBusinessCalendarAndMarket(unittest.TestCase):
+                     }
+                 ]
+             },
+-            "wttr_mcp",
++            "wttr_http",
+         )
+         self.assertEqual(weather["status"], "ok")
++        self.assertEqual(weather["source"], "wttr_http")
+         self.assertEqual(weather["source_quality"], "secondary")
+         self.assertEqual(weather["weather_risk_level"], "medium")
+ 
++    def test_weather_fixture_is_not_reported_as_mcp(self) -> None:
++        weather = normalize_weather({"weather_summary": "Sunny"}, "weather_fixture")
++        self.assertEqual(weather["source"], "weather_fixture")
++        self.assertEqual(weather["source_quality"], "fixture")
++
+     def test_market_context_blocks_without_fresh_progress(self) -> None:
+         with tempfile.TemporaryDirectory() as tmp:
+             db_path = os.path.join(tmp, "hotel_ops.sqlite")
+@@ -651,6 +661,76 @@ class TestApprovalsAndDecisions(EnvMixin, unittest.TestCase):
+         self.assertEqual(result["expected_sold_rooms_tonight"], 13)
+         self.assertEqual(result["expected_occupancy_tonight"], 0.4643)
+ 
++    def test_expected_occupancy_blocks_status_filtered_zero(self) -> None:
++        today_value = dt.datetime.now().date().isoformat()
++
++        def fake_template(template, hotel_id, **kwargs):
++            payloads = {
++                "operating_snapshot": {
++                    "total_rooms": 31,
++                    "freshness_status": "fresh",
++                    "data_business_date": today_value,
++                },
++                "reservation_snapshot": {
++                    "new_arrival_rooms": 0,
++                    "source_status": "status_filtered_zero",
++                    "raw_row_count": 3,
++                    "filtered_room_count": 0,
++                    "freshness_status": "fresh",
++                    "data_business_date": today_value,
++                },
++                "stayover_snapshot": {
++                    "stayover_rooms": 5,
++                    "source_status": "ok",
++                    "raw_row_count": 5,
++                    "filtered_room_count": 5,
++                    "freshness_status": "fresh",
++                    "data_business_date": today_value,
++                },
++            }
++            return {"status": "ok", "payload": payloads[template]}
++
++        with mock.patch("runtime.decisions.pricing.database_source_enabled", return_value=True), mock.patch(
++            "runtime.decisions.pricing.database_template_result", side_effect=fake_template
++        ):
++            result = expected_occupancy_result(argparse.Namespace(hotel_id="puyue", date=today_value))
++        self.assertEqual(result["status"], "data_gap")
++        self.assertEqual(result["expected_occupancy_status"], "source_diagnostic_failed")
++        self.assertIn("reservation_snapshot:status_filtered_zero", result["missing_sources"])
++
++    def test_expected_occupancy_historical_same_date_is_simulation_only(self) -> None:
++        target = "2026-06-08"
++
++        def fake_template(template, hotel_id, **kwargs):
++            payloads = {
++                "operating_snapshot": {"total_rooms": 31, "freshness_status": "stale", "data_business_date": target},
++                "reservation_snapshot": {
++                    "new_arrival_rooms": 8,
++                    "source_status": "ok",
++                    "raw_row_count": 8,
++                    "filtered_room_count": 8,
++                    "freshness_status": "stale",
++                    "data_business_date": target,
++                },
++                "stayover_snapshot": {
++                    "stayover_rooms": 10,
++                    "source_status": "ok",
++                    "raw_row_count": 10,
++                    "filtered_room_count": 10,
++                    "freshness_status": "stale",
++                    "data_business_date": target,
++                },
++            }
++            return {"status": "ok", "payload": payloads[template]}
++
++        with mock.patch("runtime.decisions.pricing.database_source_enabled", return_value=True), mock.patch(
++            "runtime.decisions.pricing.database_template_result", side_effect=fake_template
++        ):
++            result = expected_occupancy_result(argparse.Namespace(hotel_id="puyue", date=target))
++        self.assertEqual(result["status"], "historical_only")
++        self.assertEqual(result["expected_occupancy_status"], "historical_simulation")
++        self.assertFalse(result["today_label_allowed"])
++
+     def test_baseline_price_uses_room_type_median_factor_rounding_and_bounds(self) -> None:
+         target = dt.date.today()
+         dates = [(target - dt.timedelta(days=days)).isoformat() for days in (1, 2, 3)]
+@@ -770,6 +850,80 @@ class TestApprovalsAndDecisions(EnvMixin, unittest.TestCase):
+         self.assertEqual(action["normal_price"], 190)
+         self.assertNotEqual(action["normal_price"], 210)
+ 
++    def test_revenue_decision_historical_data_is_simulation_only(self) -> None:
++        target = "2026-06-08"
++
++        def fake_template(template, hotel_id, **kwargs):
++            if template == "operating_snapshot":
++                return {"status": "ok", "payload": {"total_rooms": 20, "freshness_status": "stale", "data_business_date": target}}
++            if template == "reservation_snapshot":
++                return {
++                    "status": "ok",
++                    "payload": {
++                        "new_arrival_rooms": 4,
++                        "source_status": "ok",
++                        "raw_row_count": 4,
++                        "filtered_room_count": 4,
++                        "freshness_status": "stale",
++                        "data_business_date": target,
++                    },
++                }
++            if template == "stayover_snapshot":
++                return {
++                    "status": "ok",
++                    "payload": {
++                        "stayover_rooms": 8,
++                        "source_status": "ok",
++                        "raw_row_count": 8,
++                        "filtered_room_count": 8,
++                        "freshness_status": "stale",
++                        "data_business_date": target,
++                    },
++                }
++            if template == "price_snapshot":
++                return {
++                    "status": "ok",
++                    "payload": {
++                        "price_snapshot_source": "business_dataset_v1.price_data",
++                        "price_snapshots": [
++                            {
++                                "room_type_id": "开黑·电竞双床房",
++                                "room_type_name": "开黑·电竞双床房",
++                                "current_price": 159,
++                                "normal_price": 160,
++                                "price_floor": 120,
++                                "price_ceiling": 260,
++                            }
++                        ],
++                        "freshness_status": "stale",
++                        "data_business_date": target,
++                    },
++                }
++            if template == "order_snapshot":
++                return {"status": "ok", "payload": {"orders": [], "freshness_status": "stale", "data_business_date": target}}
++            return {"status": "blocked"}
++
++        with mock.patch("runtime.decisions.pricing.database_source_enabled", return_value=True), mock.patch(
++            "runtime.decisions.pricing.database_template_result", side_effect=fake_template
++        ), mock.patch("runtime.decisions.pricing._date_type_factor", return_value=(1.0, "normal_day")):
++            result = _capture_json(
++                revenue_decision,
++                argparse.Namespace(
++                    hotel_id="puyue",
++                    channel="Mtop",
++                    begin_date=target,
++                    end_date=target,
++                    date=target,
++                    activity_discount_factors=None,
++                    pms_price=None,
++                ),
++            )
++        action = result["decision"]["actions"][0]
++        self.assertEqual(result["status"], "historical_only")
++        self.assertFalse(result["decision"]["approval_required"])
++        self.assertEqual(action["type"], "pricing_historical_simulation")
++        self.assertTrue(action["simulation_only"])
++
+     def test_ota_price_model_estimates_external_price_without_using_pms(self) -> None:
+         model = _build_ota_price_model(200, [0.9, 0.95], pms_price=188)
+         self.assertEqual(model["ota_activity_discount_factor"], 0.855)
+@@ -815,6 +969,62 @@ class TestApprovalsAndDecisions(EnvMixin, unittest.TestCase):
+         self.assertFalse(result["price_model"]["pms_price_used_for_execution"])
+         self.assertNotIn("pms_price_reference_only", result["request"]["body"].get("BizContent", ""))
+ 
++    def test_execute_price_uses_price_data_guard_for_real_room_name(self) -> None:
++        target = "2026-06-08"
++
++        def fake_template(template, hotel_id, **kwargs):
++            self.assertEqual(template, "price_snapshot")
++            return {
++                "status": "ok",
++                "payload": {
++                    "price_snapshots": [
++                        {
++                            "room_type_id": "DUO",
++                            "room_type_name": "开黑·电竞双床房",
++                            "price_floor": 152,
++                            "price_ceiling": 360,
++                            "freshness_status": "stale",
++                        }
++                    ],
++                    "freshness_status": "stale",
++                    "data_business_date": target,
++                },
++            }
++
++        with tempfile.TemporaryDirectory() as tmp, mock.patch("runtime.decisions.pricing.database_source_enabled", return_value=True), mock.patch(
++            "runtime.decisions.pricing.database_template_result", side_effect=fake_template
++        ):
++            db_path = os.path.join(tmp, "hotel_ops.sqlite")
++            _capture_json(main, ["--db", db_path, "init-db"])
++            result = _capture_json(
++                main,
++                [
++                    "--db",
++                    db_path,
++                    "execute-price",
++                    "--hotel-id",
++                    "puyue",
++                    "--room-type-id",
++                    "开黑·电竞双床房",
++                    "--channel",
++                    "Mtop",
++                    "--normal-price",
++                    "159",
++                    "--begin-date",
++                    target,
++                    "--end-date",
++                    target,
++                    "--user-role",
++                    "operator",
++                    "--dry-run",
++                    "--no-log",
++                ],
++            )
++        self.assertEqual(result["status"], "dry_run")
++        self.assertEqual(result["guard"]["guard_source"], "business_dataset_v1.price_data")
++        self.assertEqual(result["guard"]["floor_price"], 152.0)
++        self.assertEqual(result["resolved_room_type_id"], "DUO")
++
+     def test_baseline_emits_12_16_20_checkpoints(self) -> None:
+         checkpoints = _progress_checkpoints(20)
+         self.assertEqual([item["hour"] for item in checkpoints], [12, 16, 20])
+@@ -906,6 +1116,45 @@ class TestApprovalsAndDecisions(EnvMixin, unittest.TestCase):
+         }
+         self.assertEqual(_today_order_count(payload, "2026-06-07"), 2)
+ 
++    def test_deviation_historical_same_date_outputs_retrospective_only(self) -> None:
++        target = "2026-06-08"
++
++        def fake_template(template, hotel_id, **kwargs):
++            if template == "order_snapshot":
++                return {
++                    "status": "ok",
++                    "payload": {
++                        "orders": [
++                            {"order_id": "A", "business_date": target, "room_type_name": "KING"},
++                            {"order_id": "B", "business_date": target, "room_type_name": "TWIN"},
++                        ],
++                        "freshness_status": "stale",
++                        "data_business_date": target,
++                    },
++                }
++            if template == "daily_metrics":
++                return {
++                    "status": "ok",
++                    "payload": {
++                        "normalized_metrics": {"room_nights": 4},
++                        "freshness_status": "stale",
++                        "data_business_date": target,
++                    },
++                }
++            if template == "operating_snapshot":
++                return {"status": "ok", "payload": {"freshness_status": "stale", "data_business_date": target}}
++            return {"status": "disabled"}
++
++        with mock.patch("runtime.decisions.deviation.database_source_enabled", return_value=True), mock.patch(
++            "runtime.decisions.deviation.database_template_result", side_effect=fake_template
++        ):
++            result = _capture_json(deviation, argparse.Namespace(hotel_id="puyue", db=":memory:", date=target))
++        self.assertEqual(result["status"], "data_gap")
++        self.assertTrue(result["historical_progress_mode"])
++        self.assertEqual(result["retrospective_completion_rate"], 0.5)
++        self.assertIsNone(result["checkpoint_completion_rate"])
++        self.assertFalse(result["downstream_allowed"])
++
+     def test_customer_analysis_db_disabled_returns_no_order_rows(self) -> None:
+         os.environ["HOTEL_OTA_DB_SOURCE_ENABLE"] = "0"
+         result = _capture_json(customer_analysis, argparse.Namespace(hotel_id="puyue"))
