@@ -8,23 +8,33 @@ on:
         required: true
         default: "TAI-YE-2/hotel--ota-ai"
         type: string
-
       base_ref:
-        description: "对比基准分支"
+        description: "对比基准分支或提交"
         required: false
         default: "main"
         type: string
-
       head_ref:
-        description: "目标分支"
+        description: "要分析的分支或提交"
         required: false
         default: "main"
         type: string
-
+      compare_mode:
+        description: "recent_commit=分析最近一次提交；range=分析 base...head"
+        required: false
+        default: "recent_commit"
+        type: choice
+        options:
+          - recent_commit
+          - range
       requirement:
-        description: "需求描述"
+        description: "可选：我准备修改的需求或要关注的问题"
         required: false
         default: ""
+        type: string
+      focus_paths:
+        description: "可选：重点关注路径，逗号分隔"
+        required: false
+        default: "requirements,runtime,tests,docs,contracts"
         type: string
 
 permissions:
@@ -36,157 +46,139 @@ jobs:
     timeout-minutes: 30
 
     steps:
-
-      # =========================
-      # 1️⃣ 拉取当前仓库
-      # =========================
-      - name: Checkout report repo
+      - name: Checkout report repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
-      # =========================
-      # 2️⃣ 拉取目标仓库（私有）
-      # =========================
-      - name: Checkout target repo
+      - name: Checkout target repository read-only
         uses: actions/checkout@v4
         with:
           repository: ${{ inputs.target_repo }}
           ref: ${{ inputs.head_ref }}
-          path: target_repo
+          path: target_repo/hotel--ota-ai
           fetch-depth: 0
-          token: ${{ secrets.TARGET_REPO_TOKEN }}
+          token: ${{ secrets.TARGET_REPO_TOKEN || github.token }}
 
-      # =========================
-      # 3️⃣ Build diff（已修复稳定版）
-      # =========================
-      - name: Build diff context
+      - name: Build target diff context
         run: |
           mkdir -p outputs
+          cd target_repo/hotel--ota-ai
 
-          cd target_repo
+          {
+            echo "# Target Repository Change Context"
+            echo
+            echo "Generated at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo
+            echo "Target repo: ${{ inputs.target_repo }}"
+            echo "Base ref: ${{ inputs.base_ref }}"
+            echo "Head ref: ${{ inputs.head_ref }}"
+            echo "Compare mode: ${{ inputs.compare_mode }}"
+            echo "Requirement: ${{ inputs.requirement }}"
+            echo "Focus paths: ${{ inputs.focus_paths }}"
+            echo
+            echo "## Current HEAD"
+            git log -1 --pretty=fuller
+            echo
+            echo "## Recent commits"
+            git log -8 --oneline
+            echo
+            echo "## Repository status"
+            git status --short
+            echo
+            echo "## Repository top-level files"
+            find . -maxdepth 2 -type f | sed 's#^\./##' | sort | head -200
+          } > ../../outputs/target_change_context.md
 
-          echo "# CHANGE CONTEXT" > ../outputs/context.md
-          echo "Repo: ${{ inputs.target_repo }}" >> ../outputs/context.md
-          echo "Base: ${{ inputs.base_ref }}" >> ../outputs/context.md
-          echo "Head: ${{ inputs.head_ref }}" >> ../outputs/context.md
-          echo "Requirement: ${{ inputs.requirement }}" >> ../outputs/context.md
-
-          git fetch origin || true
-
-          BASE=${{ inputs.base_ref }}
-          HEAD=${{ inputs.head_ref }}
-
-          echo "Generating diff: $BASE .. $HEAD"
-
-          # =========================
-          # 🟢 修复点：避免空 diff / 同分支 crash
-          # =========================
-          if git rev-parse origin/$BASE >/dev/null 2>&1 && git rev-parse origin/$HEAD >/dev/null 2>&1; then
-            git diff origin/$BASE..origin/$HEAD > ../outputs/diff.patch || true
+          if [ "${{ inputs.compare_mode }}" = "range" ]; then
+            git fetch origin "${{ inputs.base_ref }}" --depth=100 || true
+            {
+              echo "## Changed files"
+              git diff --name-only "origin/${{ inputs.base_ref }}...HEAD" || true
+              echo
+              echo "## Diff stat"
+              git diff --stat "origin/${{ inputs.base_ref }}...HEAD" || true
+              echo
+              echo "## Diff patch"
+              git diff --patch "origin/${{ inputs.base_ref }}...HEAD" || true
+            } > ../../outputs/target_diff.patch
           else
-            echo "No valid diff base/head, fallback to HEAD log" > ../outputs/diff.patch
-            git log -n 20 --oneline >> ../outputs/diff.patch || true
+            {
+              echo "## Changed files"
+              git show --name-only --format= HEAD
+              echo
+              echo "## Diff patch"
+              git show --format=fuller --stat --patch HEAD
+            } > ../../outputs/target_diff.patch
           fi
 
-      # =========================
-      # 4️⃣ Debug（强烈建议保留）
-      # =========================
-      - name: Debug outputs
+      - name: Show generated context
         run: |
-          ls -R outputs || true
-          echo "==== context ===="
-          cat outputs/context.md || true
-          echo "==== diff ===="
-          cat outputs/diff.patch || true
+          echo "==== target_change_context.md ===="
+          sed -n '1,220p' outputs/target_change_context.md
+          echo "==== target_diff.patch ===="
+          sed -n '1,260p' outputs/target_diff.patch
 
-      # =========================
-      # 5️⃣ AI 分析（稳定版）
-      # =========================
-      - name: Run AI impact analysis
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      - name: Run Codex impact analysis
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          sandbox: workspace-write
+          output-file: outputs/change_summary.md
+          prompt: |
+            你是“基于 Codex 的研发协同变更分析与测试预警工作流”的分析助手。
+
+            当前仓库 `git--codex` 是测试工作区和报告仓库。
+            真实项目代码已经由 GitHub Actions checkout 到本地目录：
+
+            `target_repo/hotel--ota-ai`
+
+            注意：
+            - 不要修改 `target_repo/hotel--ota-ai` 中的任何文件。
+            - 不要把目标仓库代码复制到报告仓库。
+            - 只读取本地文件并输出影响分析报告。
+
+            请优先阅读：
+            - `outputs/target_change_context.md`
+            - `outputs/target_diff.patch`
+            - `docs/automation/analyze-target-repo-with-codex.md`
+
+            然后结合目标仓库里的代码、需求、契约、测试、Agent、Skill、配置进行分析。
+            如果某些目录不存在，请在报告中说明“未发现该目录”，不要报错。
+
+            用户关注需求：
+            `${{ inputs.requirement }}`
+
+            重点关注路径：
+            `${{ inputs.focus_paths }}`
+
+            请输出 Markdown 报告，必须包含：
+            1. 变更摘要：同事或目标分支改了什么
+            2. 修改文件清单
+            3. 影响模块：代码模块、业务模块、Agent、Skill、配置、输入输出
+            4. 协同风险：是否影响其他开发、测试环境、正式环境、其他工作区
+            5. 风险等级：low / medium / high，并说明原因
+            6. 是否需要我同步修改
+            7. 回归验证方案：测试什么、怎么测
+            8. 通过标准
+            9. 失败标准
+            10. 测试清单
+            11. 需要人工确认的点
+
+            报告风格用于考核答辩，要清晰、可展示、能体现“GitHub Actions 本地化分析架构”。
+
+      - name: Ensure target repository is not committed
         run: |
-          pip install --upgrade openai
+          rm -rf target_repo
 
-          python << 'EOF'
-import os
-import json
-from openai import OpenAI
-
-client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-
-with open("outputs/diff.patch", "r", encoding="utf-8") as f:
-    diff = f.read()
-
-prompt = f"""
-你是资深研发架构分析专家。
-
-请分析 Git diff，并严格输出 JSON（禁止任何解释）：
-
-{diff}
-
-输出格式：
-{{
-  "summary": "本次变更总结",
-  "risk_level": "low|medium|high",
-  "affected_modules": [],
-  "test_cases": [],
-  "impact": "影响说明"
-}}
-"""
-
-resp = client.chat.completions.create(
-    model="gpt-4.1",
-    messages=[
-        {"role": "system", "content": "只输出JSON，不允许解释，不允许markdown"},
-        {"role": "user", "content": prompt}
-    ],
-    temperature=0.2
-)
-
-text = resp.choices[0].message.content.strip()
-
-text = text.replace("```json", "").replace("```", "")
-
-try:
-    result = json.loads(text)
-except Exception:
-    result = {
-        "summary": "解析失败",
-        "raw_output": text
-    }
-
-os.makedirs("outputs", exist_ok=True)
-
-with open("outputs/ai_result.json", "w", encoding="utf-8") as f:
-    json.dump(result, f, ensure_ascii=False, indent=2)
-
-print(json.dumps(result, ensure_ascii=False, indent=2))
-EOF
-
-      # =========================
-      # 6️⃣ 生成报告
-      # =========================
-      - name: Build final report
+      - name: Commit generated report
         run: |
-          mkdir -p outputs
-
-          echo "# Codex Impact Report" > outputs/report.md
-          echo "" >> outputs/report.md
-
-          cat outputs/context.md >> outputs/report.md
-          echo "" >> outputs/report.md
-          echo "## AI Analysis" >> outputs/report.md
-          cat outputs/ai_result.json >> outputs/report.md
-
-      # =========================
-      # 7️⃣ 提交结果
-      # =========================
-      - name: Commit report
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-
-          git add outputs/
-
-          git commit -m "auto: codex impact analysis" || echo "no changes"
-          git push || echo "no push needed"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add outputs/target_change_context.md outputs/target_diff.patch outputs/change_summary.md
+          if git diff --cached --quiet; then
+            echo "No report changes to commit."
+          else
+            git commit -m "Add target repository impact analysis report"
+            git push
+          fi

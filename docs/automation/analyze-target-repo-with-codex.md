@@ -87,6 +87,17 @@ Body 示例：
 
 成功触发时 GitHub API 返回 `204 No Content`。
 
+如果返回 `422 Unprocessable Entity`，通常不是权限问题，而是请求体不符合
+workflow 的输入定义。请重点检查：
+
+- `ref` 是否是 `git--codex` 仓库真实存在的分支，例如 `main`
+- `inputs.compare_mode` 是否只能填写 `recent_commit` 或 `range`
+- 请求体里不要出现 workflow 没定义的输入字段
+- JSON 里变量必须由扣子变量选择器插入，不要手写错误的 `{{input}}`
+
+第一次联调建议先使用固定 JSON，不要使用动态变量。确认返回 `204` 后，
+再把 `requirement` 替换成扣子开始节点的输入变量。
+
 ## 输出
 
 报告会写入：
@@ -98,3 +109,15 @@ outputs/target_diff.patch
 ```
 
 这些文件提交在 `git--codex` 仓库，不会提交真实项目代码。
+
+## 扣子大模型节点建议
+
+HTTP 节点返回 `204` 时，body 为空是正常现象。后面的扣子大模型节点不要再
+要求 HTTP body 里有报告内容，可以输出：
+
+```text
+已触发 GitHub Actions。Codex 会在 GitHub Actions runner 中读取目标仓库、
+diff 和上下文文件，并把影响分析报告提交到 git--codex 仓库 outputs/ 目录。
+```
+
+报告不是同步返回给扣子的，而是异步生成在 GitHub 仓库中。
